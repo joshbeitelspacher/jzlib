@@ -84,6 +84,7 @@ Copyrights & Disclaimers
 ========================
 JZlib is copyrighted by ymnk, JCraft,Inc. and is licensed through BSD
 style license.  Read the LICENSE.txt file for the complete license.
+ZInputStream and ZOutputStream classes were contributed by Lapo Luchini.
 
 
 Credits
