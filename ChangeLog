@@ -1,7 +1,14 @@
 ChangeLog of JZlib
 ====================================================================
-Last modified: Mon Mar 18 15:04:57 UTC 2002
+Last modified: MTue Apr 23 16:40:37 UTC 2002
 
+	
+Changes since version 0.0.7:
+- added methods to control the window size (the size of the history
+  buffer) and to handle the no-wrap option (no zlib header or check),
+  which is the undocumented functionality of zlib.
+
+	
 Changes since version 0.0.6:
 - updated InfBlocks.java as zlib did to fix the vulnerability related to
   the 'double free'. Of course, JZlib is free from such a vulnerability

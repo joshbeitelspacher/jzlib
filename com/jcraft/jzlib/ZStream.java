@@ -69,9 +69,13 @@ final public class ZStream{
   Adler32 _adler=new Adler32();
 
   public int inflateInit(){
-    istate=new Inflate();
-    return istate.inflateInit(this, DEF_WBITS);
+    return inflateInit(DEF_WBITS);
   }
+  public int inflateInit(int w){
+    istate=new Inflate();
+    return istate.inflateInit(this, w);
+  }
+
   public int inflate(int f){
     if(istate==null) return Z_STREAM_ERROR;
     return istate.inflate(this, f);
@@ -94,8 +98,7 @@ final public class ZStream{
   }
 
   public int deflateInit(int level){
-    dstate=new Deflate();
-    return dstate.deflateInit(this, level, MAX_WBITS);
+    return deflateInit(level, MAX_WBITS);
   }
   public int deflateInit(int level, int bits){
     dstate=new Deflate();
