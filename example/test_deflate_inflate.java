@@ -20,6 +20,7 @@ class test_deflate_inflate{
 
     ZStream c_stream=new ZStream();
 
+//    err=c_stream.deflateInit(JZlib.Z_DEFAULT_COMPRESSION, 8);
     err=c_stream.deflateInit(JZlib.Z_DEFAULT_COMPRESSION);
     CHECK_ERR(c_stream, err, "deflateInit");
 
@@ -53,7 +54,8 @@ class test_deflate_inflate{
     d_stream.next_out=uncompr;
     d_stream.next_out_index=0;
 
-    err=d_stream.inflateInit();
+    err=d_stream.inflateInit(8);
+//    err=d_stream.inflateInit();
     CHECK_ERR(d_stream, err, "inflateInit");
 
     while(d_stream.total_out<uncomprLen &&

@@ -1,7 +1,14 @@
 ChangeLog of JZlib
 ====================================================================
-Last modified: Wed Nov 27 14:03:02 UTC 2002
+Last modified: Fri Feb 14 13:31:26 UTC 2003
 
+	
+Changes since version 0.0.9:
+- fixed a bug in setting a dictionary in the inflation process.
+- The license was changed to a BSD style license.
+- Z{Input,Output}Stream classes were deleted.
+
+	
 Changes since version 0.0.8:
 - fixed a bug in handling a preset dictionary in the inflation process.
 

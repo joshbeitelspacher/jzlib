@@ -1,21 +1,30 @@
 /* -*-mode:java; c-basic-offset:2; -*- */
-/* JZlib -- zlib in pure Java
- *  
- * Copyright (C) 2000 ymnk, JCraft, Inc.
- *   
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Library General Public License
- * as published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *   
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Library General Public License for more details.
- * 
- * You should have received a copy of the GNU Library General Public
- * License along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+/*
+Copyright (c) 2000,2001,2002,2003 ymnk, JCraft,Inc. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+  1. Redistributions of source code must retain the above copyright notice,
+     this list of conditions and the following disclaimer.
+
+  2. Redistributions in binary form must reproduce the above copyright 
+     notice, this list of conditions and the following disclaimer in 
+     the documentation and/or other materials provided with the distribution.
+
+  3. The names of the authors may not be used to endorse or promote products
+     derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED WARRANTIES,
+INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+VISIGOTH SOFTWARE SOCIETY OR ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 /*
  * This program is based on zlib-1.1.3, so all credit should go authors
@@ -182,21 +191,21 @@ final class Inflate{
 
         z.avail_in--; z.total_in++;
         z.istate.need=((z.next_in[z.next_in_index++]&0xff)<<24)&0xff000000L;
-        z.istate.mode = DICT3;
+        z.istate.mode=DICT3;
       case DICT3:
 
         if(z.avail_in==0)return r;r=f;
 
         z.avail_in--; z.total_in++;
-        z.istate.need += ((z.next_in[z.next_in_index++]&0xff)<<16)&0xff0000L;
-        z.istate.mode = DICT2;
+        z.istate.need+=((z.next_in[z.next_in_index++]&0xff)<<16)&0xff0000L;
+        z.istate.mode=DICT2;
       case DICT2:
 
         if(z.avail_in==0)return r;r=f;
 
         z.avail_in--; z.total_in++;
-        z.istate.need += ((z.next_in[z.next_in_index++]&0xff)<<8)&0xff00L;
-        z.istate.mode = DICT1;
+        z.istate.need+=((z.next_in[z.next_in_index++]&0xff)<<8)&0xff00L;
+        z.istate.mode=DICT1;
       case DICT1:
 
         if(z.avail_in==0)return r;r=f;
@@ -228,37 +237,37 @@ final class Inflate{
         r = f;
         z.istate.blocks.reset(z, z.istate.was);
         if(z.istate.nowrap!=0){
-          z.istate.mode = DONE;
+          z.istate.mode=DONE;
           break;
         }
-        z.istate.mode = CHECK4;
+        z.istate.mode=CHECK4;
       case CHECK4:
 
         if(z.avail_in==0)return r;r=f;
 
         z.avail_in--; z.total_in++;
-        z.istate.need = (z.next_in[z.next_in_index++]&0xff)<<24;
-        z.istate.mode = CHECK3;
+        z.istate.need=((z.next_in[z.next_in_index++]&0xff)<<24)&0xff000000L;
+        z.istate.mode=CHECK3;
       case CHECK3:
 
         if(z.avail_in==0)return r;r=f;
 
         z.avail_in--; z.total_in++;
-        z.istate.need+=(z.next_in[z.next_in_index++]&0xff)<<16;
+        z.istate.need+=((z.next_in[z.next_in_index++]&0xff)<<16)&0xff0000L;
         z.istate.mode = CHECK2;
       case CHECK2:
 
         if(z.avail_in==0)return r;r=f;
 
         z.avail_in--; z.total_in++;
-        z.istate.need+=(z.next_in[z.next_in_index++]&0xff)<<8;
+        z.istate.need+=((z.next_in[z.next_in_index++]&0xff)<<8)&0xff00L;
         z.istate.mode = CHECK1;
       case CHECK1:
 
         if(z.avail_in==0)return r;r=f;
 
         z.avail_in--; z.total_in++;
-        z.istate.need+=(z.next_in[z.next_in_index++]&0xff);
+        z.istate.need+=(z.next_in[z.next_in_index++]&0xffL);
 
         if(((int)(z.istate.was[0])) != ((int)(z.istate.need))){
           z.istate.mode = BAD;

@@ -1,9 +1,9 @@
 
 README of misc directory
 ====================================================================
-Last modified: Wed Nov 27 14:08:49 UTC 2002
+Last modified: Wed Dec 20 06:11:00 UTC 2000
 
-- mindtermsrc-v121-compression-v3.patch
+- mindtermsrc-v121-compression.patch
   This file is a 'unofficial' patch for MindTerm v1.2.1. 
   It adds the packet compression support to this awesome SSH system.
   MindTerm is a SSH1 client program written in pure Java under GPL and
@@ -13,7 +13,7 @@ Last modified: Wed Nov 27 14:08:49 UTC 2002
 
   $ tar xzf mindtermsrc-v121.tgz
   $ cd mindbright
-  $ patch -p1 < mindtermsrc-v121-compression-v3.patch
+  $ patch -p1 < mindtermsrc-v121-compression.patch
 Note: JZlib must be accessible via the class path.
   $ make
   $ cd ..
