@@ -104,7 +104,8 @@ public class ZInputStream extends FilterInputStream {
 	throw new ZStreamException((compress ? "de" : "in")+"flating: "+z.msg);
       if(nomoreinput&&(z.avail_out==len))
 	return(-1);
-    } while(z.avail_out==len);
+    } 
+    while(z.avail_out==len&&err==JZlib.Z_OK);
     //System.err.print("("+(len-z.avail_out)+")");
     return(len-z.avail_out);
   }
