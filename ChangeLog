@@ -1,8 +1,12 @@
 ChangeLog of JZlib
 ====================================================================
-Last modified: Tue Jun  3 15:35:30 UTC 2003
+Last modified: Mon Sep 29 06:58:15 UTC 2003
 
+Changes since version 1.0.2:
+- enabled pure Java implementation of adler32 and
+  commented out the dependency on J2SE in Adler32.java for J2ME users.
 
+	
 Changes since version 1.0.1:
 - fixed a bug in deflating some trivial data, for example,
   large data chunk filled with zero.	
