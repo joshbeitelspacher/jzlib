@@ -137,6 +137,7 @@ final class Inflate{
     f = f == Z_FINISH ? Z_BUF_ERROR : Z_OK;
     r = Z_BUF_ERROR;
     while (true){
+//System.out.println("mode: "+z.istate.mode);
       switch (z.istate.mode){
       case METHOD:
 

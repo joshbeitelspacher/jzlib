@@ -25,6 +25,7 @@
 
 package com.jcraft.jzlib;
 
+public 
 final class Deflate{
 
   static final private int MAX_MEM_LEVEL=9;
@@ -656,6 +657,7 @@ final class Deflate{
 	dist=((pending_buf[d_buf+lx*2]<<8)&0xff00)|
 	  (pending_buf[d_buf+lx*2+1]&0xff);
 	lc=(pending_buf[l_buf+lx])&0xff; lx++;
+
 	if(dist == 0){
 	  send_code(lc, ltree); // send a literal byte
 	} 
@@ -931,7 +933,7 @@ final class Deflate{
 	n = hash_size;
 	p=n;
 	do {
-	  m = head[--p];
+	  m = (head[--p]&0xffff);
 	  head[p]=(m>=w_size ? (short)(m-w_size) : 0);
 	}
 	while (--n != 0);
@@ -939,7 +941,7 @@ final class Deflate{
 	n = w_size;
 	p = n;
 	do {
-	  m = prev[--p];
+	  m = (prev[--p]&0xffff);
 	  prev[p] = (m >= w_size ? (short)(m-w_size) : 0);
 	  // If n is not on any hash chain, prev[n] is garbage but
 	  // its value will never be used.
@@ -981,7 +983,8 @@ final class Deflate{
   // new strings in the dictionary only for unmatched strings or for short
   // matches. It is used only for the fast compression options.
   int deflate_fast(int flush){
-    short hash_head = 0; // head of the hash chain
+//    short hash_head = 0; // head of the hash chain
+    int hash_head = 0; // head of the hash chain
     boolean bflush;      // set if current block must be flushed
 
     while(true){
@@ -1001,12 +1004,16 @@ final class Deflate{
       // dictionary, and set hash_head to the head of the hash chain:
       if(lookahead >= MIN_MATCH){
 	ins_h=(((ins_h)<<hash_shift)^(window[(strstart)+(MIN_MATCH-1)]&0xff))&hash_mask;
-	prev[strstart&w_mask]=hash_head=head[ins_h];
+
+//	prev[strstart&w_mask]=hash_head=head[ins_h];
+        hash_head=(head[ins_h]&0xffff);
+	prev[strstart&w_mask]=head[ins_h];
 	head[ins_h]=(short)strstart;
       }
 
       // Find the longest match, discarding those <= prev_length.
       // At this point we have always match_length < MIN_MATCH
+
       if(hash_head!=0L && strstart-hash_head<=w_size-MIN_LOOKAHEAD) {
 	// To simplify the code, we prevent matches with the string
 	// of window index 0 (in particular we have to avoid a match
@@ -1032,7 +1039,9 @@ final class Deflate{
 	    strstart++;
 
 	    ins_h=((ins_h<<hash_shift)^(window[(strstart)+(MIN_MATCH-1)]&0xff))&hash_mask;
-	    prev[strstart&w_mask]=hash_head=head[ins_h];
+//	    prev[strstart&w_mask]=hash_head=head[ins_h];
+	    hash_head=(head[ins_h]&0xffff);
+	    prev[strstart&w_mask]=head[ins_h];
 	    head[ins_h]=(short)strstart;
 
 	    // strstart never exceeds WSIZE-MAX_MATCH, so there are
@@ -1077,7 +1086,8 @@ final class Deflate{
   // evaluation for matches: a match is finally adopted only if there is
   // no better match at the next window position.
   int deflate_slow(int flush){
-    short hash_head = 0;    // head of hash chain
+//    short hash_head = 0;    // head of hash chain
+    int hash_head = 0;    // head of hash chain
     boolean bflush;         // set if current block must be flushed
 
     // Process the input block.
@@ -1100,7 +1110,9 @@ final class Deflate{
 
       if(lookahead >= MIN_MATCH) {
 	ins_h=(((ins_h)<<hash_shift)^(window[(strstart)+(MIN_MATCH-1)]&0xff)) & hash_mask;
-	prev[strstart&w_mask]=hash_head=head[ins_h];
+//	prev[strstart&w_mask]=hash_head=head[ins_h];
+	hash_head=(head[ins_h]&0xffff);
+	prev[strstart&w_mask]=head[ins_h];
 	head[ins_h]=(short)strstart;
       }
 
@@ -1148,7 +1160,9 @@ final class Deflate{
 	do{
 	  if(++strstart <= max_insert) {
 	    ins_h=(((ins_h)<<hash_shift)^(window[(strstart)+(MIN_MATCH-1)]&0xff))&hash_mask;
-	    prev[strstart&w_mask]=hash_head=head[ins_h];
+	    //prev[strstart&w_mask]=hash_head=head[ins_h];
+	    hash_head=(head[ins_h]&0xffff);
+	    prev[strstart&w_mask]=head[ins_h];
 	    head[ins_h]=(short)strstart;
 	  }
 	}
@@ -1207,6 +1221,7 @@ final class Deflate{
     int best_len = prev_length;          // best match length so far
     int limit = strstart>(w_size-MIN_LOOKAHEAD) ?
       strstart-(w_size-MIN_LOOKAHEAD) : 0;
+    int nice_match=this.nice_match;
 
     // Stop when cur_match becomes <= limit. To simplify the code,
     // we prevent matches with the string of window index 0.
@@ -1216,7 +1231,6 @@ final class Deflate{
     int strend = strstart + MAX_MATCH;
     byte scan_end1 = window[scan+best_len-1];
     byte scan_end = window[scan+best_len];
-
 
     // The code is optimized for HASH_BITS >= 8 and MAX_MATCH-2 multiple of 16.
     // It is easy to get rid of this optimization if necessary.
@@ -1273,7 +1287,7 @@ final class Deflate{
 	scan_end1  = window[scan+best_len-1];
 	scan_end   = window[scan+best_len];
       }
-    } while ((cur_match = prev[cur_match & wmask]) > limit
+    } while ((cur_match = (prev[cur_match & wmask]&0xffff)) > limit
 	     && --chain_length != 0);
 
     if (best_len <= lookahead) return best_len;
@@ -1338,6 +1352,9 @@ final class Deflate{
     l_buf = (1+2)*lit_bufsize;
 
     this.level = level;
+
+//System.out.println("level="+level);
+
     this.strategy = strategy;
     this.method = (byte)method;
 

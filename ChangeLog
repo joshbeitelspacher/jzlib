@@ -1,0 +1,12 @@
+ChangeLog of JZlib
+====================================================================
+Last modified: Thu Mar  8 15:25:48 UTC 2001
+
+
+Changes since version 0.0.1:
+............................
+- fixed the bad compression ratio problem, which was reported from
+  Martin Smith(martin@spamcop.net). The compression ratio was not so good
+  compared with the compression ration by zlib. Now, this problem has been
+  fixed	and, I hope, deflated files by JZlib and zlib are completely
+  same bit by bit. I thank him for his valuable feedback.
