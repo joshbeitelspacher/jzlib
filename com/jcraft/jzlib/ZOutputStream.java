@@ -95,16 +95,41 @@ public class ZOutputStream extends OutputStream {
     this.flush=flush;
   }
 
-  public void close() throws IOException {
-    try {
-      out.flush();
-    } catch (IOException ignored) {
+  public void finish() throws IOException {
+    int err;
+    do{
+      z.next_out=buf;
+      z.next_out_index=0;
+      z.avail_out=bufsize;
+      if(compress){ err=z.deflate(JZlib.Z_FINISH);  }
+      else{ err=z.inflate(JZlib.Z_FINISH); }
+      if(err!=JZlib.Z_STREAM_END && err != JZlib.Z_OK)
+      throw new ZStreamException((compress?"de":"in")+"flating: "+z.msg);
+      if(bufsize-z.avail_out>0){
+	out.write(buf, 0, bufsize-z.avail_out);
+      }
     }
-    z.deflateEnd();
+    while(z.avail_in>0 || z.avail_out==0);
+    try { flush(); } 
+    catch (IOException ignored) {
+    }
+  }
+  public void end() throws IOException {
+    if(compress){ z.deflateEnd(); }
+    else{ z.inflateEnd(); }
     z.free();
     z=null;
-    out.close();
-    out=null;
+  }
+  public void close() throws IOException {
+    try{
+      try{finish();}
+      catch (IOException ignored) {}
+    }
+    finally{
+      end();
+      out.close();
+      out=null;
+    }
   }
 
   /**

@@ -1,7 +1,14 @@
 ChangeLog of JZlib
 ====================================================================
-Last modified: Mon Sep 29 06:58:15 UTC 2003
+Last modified: Tue Mar 16 12:57:32 UTC 2004
 
+Changes since version 1.0.3:
+- fixed a bug in closing ZOutputStream.
+  The inflating and deflating processes were not finished successfully.
+- added 'finish' and 'end' methods to ZOutputStream.java
+- added 'example/test_stream_deflate_inflate.java'
+
+	
 Changes since version 1.0.2:
 - enabled pure Java implementation of adler32 and
   commented out the dependency on J2SE in Adler32.java for J2ME users.
