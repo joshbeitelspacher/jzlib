@@ -1487,7 +1487,7 @@ final class Deflate{
     // Write the zlib header
     if(status == INIT_STATE) {
       int header = (Z_DEFLATED+((w_bits-8)<<4))<<8;
-      int level_flags=(level-1) >> 1;
+      int level_flags=((level-1)&0xff)>>1;
 
       if(level_flags>3) level_flags=3;
       header |= (level_flags<<6);

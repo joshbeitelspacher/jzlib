@@ -239,7 +239,7 @@ final class Tree{
 
     for(n=0; n<elems; n++) {
       if(tree[n*2] != 0) {
-	s.heap[++(s.heap_len)] = max_code = n;
+	s.heap[++s.heap_len] = max_code = n;
 	s.depth[n] = 0;
       }
       else{
@@ -252,7 +252,7 @@ final class Tree{
     // possible code. So to avoid special checks later on we force at least
     // two codes of non zero frequency.
     while (s.heap_len < 2) {
-      node = s.heap[++(s.heap_len)] = (max_code < 2 ? ++max_code : 0);
+      node = s.heap[++s.heap_len] = (max_code < 2 ? ++max_code : 0);
       tree[node*2] = 1;
       s.depth[node] = 0;
       s.opt_len--; if (stree!=null) s.static_len -= stree[node*2+1];
@@ -277,8 +277,8 @@ final class Tree{
       s.pqdownheap(tree, 1);
       m=s.heap[1];                // m = node of next least frequency
 
-      s.heap[--(s.heap_max)] = n; // keep the nodes sorted by frequency
-      s.heap[--(s.heap_max)] = m;
+      s.heap[--s.heap_max] = n; // keep the nodes sorted by frequency
+      s.heap[--s.heap_max] = m;
 
       // Create a new node father of n and m
       tree[node*2] = (short)(tree[n*2] + tree[m*2]);
@@ -291,7 +291,7 @@ final class Tree{
     }
     while(s.heap_len>=2);
 
-    s.heap[--(s.heap_max)] = s.heap[1];
+    s.heap[--s.heap_max] = s.heap[1];
 
     // At this point, the fields freq and dad are set. We can now
     // generate the bit lengths.

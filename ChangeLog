@@ -1,12 +1,20 @@
 ChangeLog of JZlib
 ====================================================================
-Last modified: Fri Apr  6 15:30:54 UTC 2001
+Last modified: Fri May 18 15:25:32 UTC 2001
+
+Changes since version 0.0.3:
+............................
+- fixed a bug in the compression level 0.
+- modified to be compatible with JIKES's bug.
+- added Z[Input,Output]Stream written by Lapo Luchini<lapo@lapo.it>.
+
 
 Changes since version 0.0.2:
 ............................
 - fixed a critical bug, which had arisen in the deflating operation with
   NO_FLUSH and DEFAULT_COMPRESSION mode.
   Many thanks to Bryan Keller(keller@neomar.com), who reported this glitch.
+
 
 Changes since version 0.0.1:
 ............................
