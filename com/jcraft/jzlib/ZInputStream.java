@@ -26,7 +26,7 @@
 package com.jcraft.jzlib;
 import java.io.*;
 
-public class ZInputStream extends InputStream {
+public class ZInputStream extends FilterInputStream {
 
   protected ZStream z=new ZStream();
   protected int bufsize=512;
@@ -38,7 +38,7 @@ public class ZInputStream extends InputStream {
   private InputStream in=null;
 
   public ZInputStream(InputStream in) {
-    super();
+    super(in);
     this.in=in;
     z.inflateInit();
     compress=false;
@@ -48,7 +48,7 @@ public class ZInputStream extends InputStream {
   }
 
   public ZInputStream(InputStream in, int level) {
-    super();
+    super(in);
     this.in=in;
     z.deflateInit(level);
     compress=true;

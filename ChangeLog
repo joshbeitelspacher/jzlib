@@ -1,6 +1,9 @@
 ChangeLog of JZlib
 ====================================================================
-Last modified: MTue Apr 23 16:40:37 UTC 2002
+Last modified: Wed Nov 27 14:03:02 UTC 2002
+
+Changes since version 0.0.8:
+- fixed a bug in handling a preset dictionary in the inflation process.
 
 	
 Changes since version 0.0.7:
@@ -21,7 +24,7 @@ Changes since version 0.0.5:
 - fixed to take care when occurring the buffer overflow in 
   com.jcraft.jzlib.ZOutputStream.
 Many thanks to Tim Bendfelt at cs.wisc.edu , who pointed out above problems.
-
+	
 	
 Changes since version 0.0.4:
 ............................

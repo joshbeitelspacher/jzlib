@@ -1,0 +1,769 @@
+diff -Naur mindbright/Makefile mindbright-compression/Makefile
+--- mindbright/Makefile	Tue Aug  1 20:37:08 2000
++++ mindbright-compression/Makefile	Wed Aug 15 18:22:02 2001
+@@ -56,6 +56,7 @@
+ 	ssh/SSHTxChannel.class \
+ 	ssh/SSHTunnel.class \
+ 	ssh/SSHProtocolPlugin.class \
++	ssh/SSHCompression.class \
+ 	ssh/SSHPdu.class \
+ 	ssh/SSHDataInputStream.class \
+ 	ssh/SSHDataOutputStream.class \
+diff -Naur mindbright/ssh/SSH.java mindbright-compression/ssh/SSH.java
+--- mindbright/ssh/SSH.java	Tue Aug  1 22:30:52 2000
++++ mindbright-compression/ssh/SSH.java	Wed Aug 15 17:13:02 2001
+@@ -206,6 +206,8 @@
+   protected Cipher rcvCipher;
+   protected int    cipherType;
+ 
++  protected SSHCompression compression = null;
++
+   // Server data fields
+   //
+   protected byte[]  srvCookie;
+diff -Naur mindbright/ssh/SSHChannelController.java mindbright-compression/ssh/SSHChannelController.java
+--- mindbright/ssh/SSHChannelController.java	Thu Mar  9 10:59:44 2000
++++ mindbright-compression/ssh/SSHChannelController.java	Wed Aug 15 17:38:53 2001
+@@ -46,10 +46,11 @@
+   protected Cipher rcvCipher;
+ 
+   public SSHChannelController(SSH sshHook, InputStream in, OutputStream out,
+-			      Cipher sndCipher, Cipher rcvCipher,
++			      Cipher sndCipher, Cipher rcvCipher, SSHCompression compression,
+ 			      SSHConsole console, boolean haveCnxWatch) {
+     this.sndCipher = sndCipher;
+     this.rcvCipher = rcvCipher;
++    this.compression = compression;
+ 
+     this.sshHook = sshHook;
+     this.console = console;
+@@ -64,7 +65,7 @@
+ 
+     rxChan.setSSHChannelListener(this);
+     txChan.setSSHChannelListener(this);
+-    rxChan.setSSHPduFactory(new SSHPduInputStream(MSG_ANY, rcvCipher));
++    rxChan.setSSHPduFactory(new SSHPduInputStream(MSG_ANY, rcvCipher, compression));
+     txQueue = txChan.getQueue();
+ 
+     if(haveCnxWatch) {
+@@ -248,7 +249,7 @@
+ 	  console.stderrWriteString(inPdu.readStringAsBytes());
+ 	break;
+       case SMSG_EXITSTATUS:
+-	SSHPduOutputStream exitPdu = new SSHPduOutputStream(CMSG_EXIT_CONFIRMATION, sndCipher);
++	SSHPduOutputStream exitPdu = new SSHPduOutputStream(CMSG_EXIT_CONFIRMATION, sndCipher, compression);
+ 	int status = inPdu.readInt();
+ 	if(console != null) {
+ 	  if(status != 0)
+@@ -379,7 +380,7 @@
+ 
+   public void sendDisconnect(String reason) {
+     try {
+-      SSHPduOutputStream pdu = new SSHPduOutputStream(MSG_DISCONNECT, sndCipher);
++      SSHPduOutputStream pdu = new SSHPduOutputStream(MSG_DISCONNECT, sndCipher, compression);
+       pdu.writeString(reason);
+       if(txQueue != null)
+ 	  txQueue.putFirst(pdu);
+diff -Naur mindbright/ssh/SSHClient.java mindbright-compression/ssh/SSHClient.java
+--- mindbright/ssh/SSHClient.java	Tue Apr  4 09:34:12 2000
++++ mindbright-compression/ssh/SSHClient.java	Wed Aug 15 17:46:02 2001
+@@ -98,7 +98,7 @@
+ 		  }
+ 		  sleep(1000 * i);
+ 		  if(SSHClient.this.controller != null) {
+-		      ignmsg = new SSHPduOutputStream(MSG_DEBUG, controller.sndCipher);
++		      ignmsg = new SSHPduOutputStream(MSG_DEBUG, controller.sndCipher, controller.compression);
+ 		      ignmsg.writeString("heartbeat");
+ 		      controller.transmit(ignmsg);
+ 		  }
+@@ -448,9 +448,9 @@
+ 
+       authenticateUser(userName);
+ 
+-      controller = new SSHChannelController(this, sshIn, sshOut, sndCipher, rcvCipher,
+-					    console, haveCnxWatch);
+       initiateSession();
++      controller = new SSHChannelController(this, sshIn, sshOut, sndCipher, rcvCipher, compression,
++					    console, haveCnxWatch);
+       if(console != null)
+ 	console.serverConnect(controller, sndCipher);
+ 
+@@ -481,6 +481,10 @@
+   protected void disconnect(boolean graceful) {
+     if(!isConnected)
+       return;
++    if(compression != null){
++      //compression.uninit();
++      compression = null;
++    }
+     isConnected   = false;
+     isOpened      = false;
+     gracefulExit  = graceful;
+@@ -533,7 +537,7 @@
+   }
+ 
+   void receiveServerData() throws IOException {
+-    SSHPduInputStream pdu = new SSHPduInputStream(SMSG_PUBLIC_KEY, null);
++    SSHPduInputStream pdu = new SSHPduInputStream(SMSG_PUBLIC_KEY, null, null);
+     pdu.readFrom(sshIn);
+     int bits;
+     BigInteger e, n;
+@@ -614,7 +618,7 @@
+       encKey = rsa.doPublic(padded);
+     }
+ 
+-    pdu = new SSHPduOutputStream(CMSG_SESSION_KEY, null);
++    pdu = new SSHPduOutputStream(CMSG_SESSION_KEY, null, null);
+     pdu.writeByte((byte)cipherType);
+     pdu.write(srvCookie, 0, srvCookie.length);
+     pdu.writeBigInteger(encKey);
+@@ -635,7 +639,7 @@
+ 
+     usedOTP = false;
+ 
+-    outpdu = new SSHPduOutputStream(CMSG_USER, sndCipher);
++    outpdu = new SSHPduOutputStream(CMSG_USER, sndCipher, compression);
+     outpdu.writeString(userName);
+     outpdu.writeTo(sshOut);
+ 
+@@ -698,7 +702,7 @@
+ 
+     password = authenticator.getPassword(user);
+ 
+-    outpdu = new SSHPduOutputStream(CMSG_AUTH_PASSWORD, sndCipher);
++    outpdu = new SSHPduOutputStream(CMSG_AUTH_PASSWORD, sndCipher, compression);
+     outpdu.writeString(password);
+     outpdu.writeTo(sshOut);
+ 
+@@ -709,7 +713,7 @@
+   void doRhostsAuth(String userName) throws IOException {
+     SSHPduOutputStream outpdu;
+ 
+-    outpdu = new SSHPduOutputStream(CMSG_AUTH_RHOSTS, sndCipher);
++    outpdu = new SSHPduOutputStream(CMSG_AUTH_RHOSTS, sndCipher, compression);
+     outpdu.writeString(userName);
+     outpdu.writeTo(sshOut);
+ 
+@@ -722,9 +726,9 @@
+     String prompt;
+     String response;
+ 
+-    outpdu = new SSHPduOutputStream(CMSG_AUTH_TIS, sndCipher);
++    outpdu = new SSHPduOutputStream(CMSG_AUTH_TIS, sndCipher, compression);
+     outpdu.writeTo(sshOut);
+-    SSHPduInputStream inpdu = new SSHPduInputStream(MSG_ANY, rcvCipher);
++    SSHPduInputStream inpdu = new SSHPduInputStream(MSG_ANY, rcvCipher, compression);
+     inpdu.readFrom(sshIn);
+ 
+     if(inpdu.type == SMSG_FAILURE)
+@@ -735,7 +739,7 @@
+     prompt = inpdu.readString();
+     response = authenticator.getChallengeResponse(user, prompt);
+ 
+-    outpdu = new SSHPduOutputStream(CMSG_AUTH_TIS_RESPONSE, sndCipher);
++    outpdu = new SSHPduOutputStream(CMSG_AUTH_TIS_RESPONSE, sndCipher, compression);
+     outpdu.writeString(response);
+     outpdu.writeTo(sshOut);
+ 
+@@ -749,18 +753,18 @@
+     RSAPublicKey       pubKey  = keyFile.getPublic();
+ 
+     if(rhosts) {
+-      outpdu = new SSHPduOutputStream(CMSG_AUTH_RHOSTS_RSA, sndCipher);
++      outpdu = new SSHPduOutputStream(CMSG_AUTH_RHOSTS_RSA, sndCipher, compression);
+       outpdu.writeString(userName);
+       outpdu.writeInt(pubKey.bitLength());
+       outpdu.writeBigInteger(pubKey.getE());
+       outpdu.writeBigInteger(pubKey.getN());
+     } else {
+-      outpdu = new SSHPduOutputStream(CMSG_AUTH_RSA, sndCipher);
++      outpdu = new SSHPduOutputStream(CMSG_AUTH_RSA, sndCipher, compression);
+       outpdu.writeBigInteger(pubKey.getN());
+     }
+     outpdu.writeTo(sshOut);
+ 
+-    SSHPduInputStream inpdu = new SSHPduInputStream(MSG_ANY, rcvCipher);
++    SSHPduInputStream inpdu = new SSHPduInputStream(MSG_ANY, rcvCipher, compression);
+     inpdu.readFrom(sshIn);
+     if(inpdu.type == SMSG_FAILURE)
+       throw new  AuthFailException("Server refused our key" + (rhosts ? " or rhosts" : ""));
+@@ -794,11 +798,11 @@
+       password = authenticator.getChallengeResponse(user, userName +
+ 						    "'s SDI token passcode: ");
+ 
+-      outpdu = new SSHPduOutputStream(CMSG_AUTH_SDI, sndCipher);
++      outpdu = new SSHPduOutputStream(CMSG_AUTH_SDI, sndCipher, compression);
+       outpdu.writeString(password);
+       outpdu.writeTo(sshOut);
+ 
+-      SSHPduInputStream inpdu = new SSHPduInputStream(MSG_ANY, rcvCipher);
++      SSHPduInputStream inpdu = new SSHPduInputStream(MSG_ANY, rcvCipher, compression);
+       inpdu.readFrom(sshIn);
+       switch(inpdu.type) {
+       case SMSG_SUCCESS:
+@@ -810,7 +814,7 @@
+ 
+       case CMSG_ACM_NEXT_CODE_REQUIRED:
+ 	  password = interactor.promptPassword("Next token required: ");
+-	  outpdu = new SSHPduOutputStream(CMSG_ACM_NEXT_CODE, sndCipher);
++	  outpdu = new SSHPduOutputStream(CMSG_ACM_NEXT_CODE, sndCipher, compression);
+ 	  outpdu.writeString(password);
+ 	  outpdu.writeTo(sshOut);
+ 	  if(!isSuccess())
+@@ -841,11 +845,11 @@
+ 		      interactor.promptPassword("Please enter new PIN again");
+ 	      } while (!password.equals(pwdChk));
+ 
+-	  outpdu = new SSHPduOutputStream(CMSG_ACM_NEW_PIN, sndCipher);
++	  outpdu = new SSHPduOutputStream(CMSG_ACM_NEW_PIN, sndCipher, compression);
+ 	  outpdu.writeString(password);
+ 	  outpdu.writeTo(sshOut);
+ 
+-	  inpdu = new SSHPduInputStream(MSG_ANY, rcvCipher);
++	  inpdu = new SSHPduInputStream(MSG_ANY, rcvCipher, compression);
+ 	  inpdu.readFrom(sshIn);
+ 	  if(inpdu.type != CMSG_ACM_NEW_PIN_ACCEPTED) {
+ 	      throw new AuthFailException("PIN rejected by server");
+@@ -886,7 +890,7 @@
+       throw new IOException("MD5 not implemented, can't generate session-id");
+     }
+ 
+-    SSHPduOutputStream outpdu = new SSHPduOutputStream(CMSG_AUTH_RSA_RESPONSE, sndCipher);
++    SSHPduOutputStream outpdu = new SSHPduOutputStream(CMSG_AUTH_RSA_RESPONSE, sndCipher, compression);
+     outpdu.write(response, 0, response.length);
+     outpdu.writeTo(sshOut);
+ 
+@@ -897,7 +901,7 @@
+   void initiateSession() throws IOException {
+     // !!! java.util.zip.Deflater/Inflater can't be used since we can't give
+     // the native inflate/deflate methods the Z_PARTIAL_FLUSH flag
+-    // requestCompression(3);
++    requestCompression(user.getCompressionLevel());
+ 
+     if(user.wantPTY())
+       requestPTY();
+@@ -939,15 +943,24 @@
+   }
+ 
+   void requestCompression(int level) throws IOException {
+-    SSHPduOutputStream outpdu = new SSHPduOutputStream(CMSG_REQUEST_COMPRESSION, sndCipher);
++    if(level==0) return;
++    if(level<0 || level>9){
++      if(interactor!=null)
++	interactor.report("Error requesting invalid compression level: " + level);
++      return;
++    }
++
++    SSHPduOutputStream outpdu = new SSHPduOutputStream(CMSG_REQUEST_COMPRESSION, sndCipher, compression);
+     outpdu.writeInt(level);
+     outpdu.writeTo(sshOut);
+     if(!isSuccess() && interactor != null)
+ 	interactor.report("Error requesting compression level: " + level);
++    compression = new SSHCompression();
++    compression.init(level);
+   }
+ 
+   void requestMaxPacketSz(int sz) throws IOException {
+-    SSHPduOutputStream outpdu = new SSHPduOutputStream(CMSG_MAX_PACKET_SIZE, sndCipher);
++    SSHPduOutputStream outpdu = new SSHPduOutputStream(CMSG_MAX_PACKET_SIZE, sndCipher, compression);
+     outpdu.writeInt(sz);
+     outpdu.writeTo(sshOut);
+     if(!isSuccess() && interactor != null)
+@@ -955,7 +968,7 @@
+   }
+ 
+   void requestX11Forward() throws IOException {
+-    SSHPduOutputStream outpdu = new SSHPduOutputStream(CMSG_X11_REQUEST_FORWARDING, sndCipher);
++    SSHPduOutputStream outpdu = new SSHPduOutputStream(CMSG_X11_REQUEST_FORWARDING, sndCipher, compression);
+ 
+     // !!!
+     outpdu.writeString("MIT-MAGIC-COOKIE-1");
+@@ -970,7 +983,7 @@
+   }
+ 
+   void requestPTY() throws IOException {
+-    SSHPduOutputStream outpdu = new SSHPduOutputStream(CMSG_REQUEST_PTY, sndCipher);
++    SSHPduOutputStream outpdu = new SSHPduOutputStream(CMSG_REQUEST_PTY, sndCipher, compression);
+     Terminal myTerminal = null;
+     if(console != null)
+       myTerminal = console.getTerminal();
+@@ -1009,7 +1022,7 @@
+ 	throw new IOException("Plugins not available");
+     }
+ 
+-    SSHPduOutputStream outpdu = new SSHPduOutputStream(CMSG_PORT_FORWARD_REQUEST, sndCipher);
++    SSHPduOutputStream outpdu = new SSHPduOutputStream(CMSG_PORT_FORWARD_REQUEST, sndCipher, compression);
+     outpdu.writeInt(remotePort);
+     outpdu.writeString(localHost);
+     outpdu.writeInt(localPort);
+@@ -1023,20 +1036,20 @@
+   }
+ 
+   void requestCommand(String command) throws IOException {
+-    SSHPduOutputStream outpdu = new SSHPduOutputStream(CMSG_EXEC_CMD, sndCipher);
++    SSHPduOutputStream outpdu = new SSHPduOutputStream(CMSG_EXEC_CMD, sndCipher, compression);
+     outpdu.writeString(command);
+     outpdu.writeTo(sshOut);
+   }
+ 
+   void requestShell() throws IOException {
+-    SSHPduOutputStream outpdu = new SSHPduOutputStream(CMSG_EXEC_SHELL, sndCipher);
++    SSHPduOutputStream outpdu = new SSHPduOutputStream(CMSG_EXEC_SHELL, sndCipher, compression);
+     outpdu.writeTo(sshOut);
+   }
+ 
+   boolean isSuccess() throws IOException {
+     boolean success = false;
+     SSHPduInputStream inpdu = null;
+-    inpdu = new SSHPduInputStream(MSG_ANY, rcvCipher);
++    inpdu = new SSHPduInputStream(MSG_ANY, rcvCipher, compression);
+     inpdu.readFrom(sshIn);
+     if(inpdu.type == SMSG_SUCCESS)
+       success = true;
+@@ -1097,7 +1110,7 @@
+   void stdinWriteString(byte[] str, int off, int len) throws IOException {
+     SSHPduOutputStream stdinPdu;
+     if(isOpened && controller != null) {
+-      stdinPdu = new SSHPduOutputStream(SSH.CMSG_STDIN_DATA, sndCipher);
++      stdinPdu = new SSHPduOutputStream(SSH.CMSG_STDIN_DATA, sndCipher, compression);
+       stdinPdu.writeInt(len);
+       stdinPdu.write(str, off, len);
+       controller.transmit(stdinPdu);
+@@ -1108,7 +1121,7 @@
+     if(isOpened && controller != null) {
+       try {
+ 	SSHPduOutputStream pdu;
+-	pdu = new SSHPduOutputStream(SSH.CMSG_WINDOW_SIZE, sndCipher);
++	pdu = new SSHPduOutputStream(SSH.CMSG_WINDOW_SIZE, sndCipher, compression);
+ 	pdu.writeInt(rows);
+ 	pdu.writeInt(cols);
+ 	pdu.writeInt(vpixels);
+diff -Naur mindbright/ssh/SSHClientUser.java mindbright-compression/ssh/SSHClientUser.java
+--- mindbright/ssh/SSHClientUser.java	Sat Feb 26 12:28:51 2000
++++ mindbright-compression/ssh/SSHClientUser.java	Wed Aug 15 17:13:02 2001
+@@ -30,6 +30,7 @@
+   public String  getDisplay();
+   public int     getMaxPacketSz();
+   public int     getAliveInterval();
++  public int     getCompressionLevel();
+ 
+   public boolean wantX11Forward();
+   public boolean wantPrivileged();
+diff -Naur mindbright/ssh/SSHClientUserAdaptor.java mindbright-compression/ssh/SSHClientUserAdaptor.java
+--- mindbright/ssh/SSHClientUserAdaptor.java	Sat Feb 26 12:28:51 2000
++++ mindbright-compression/ssh/SSHClientUserAdaptor.java	Wed Aug 15 17:13:02 2001
+@@ -62,6 +62,10 @@
+     return 0;
+   }
+ 
++  public int getCompressionLevel() {
++    return 0;
++  }
++
+   public boolean wantX11Forward() {
+     return false;
+   }
+diff -Naur mindbright/ssh/SSHCompression.java mindbright-compression/ssh/SSHCompression.java
+--- mindbright/ssh/SSHCompression.java	Thu Jan  1 00:00:00 1970
++++ mindbright-compression/ssh/SSHCompression.java	Wed Aug 15 18:01:02 2001
+@@ -0,0 +1,145 @@
++/******************************************************************************
++ *
++ * Copyright (c) 2000 by ymnk, ymnk@jcraft.com
++ *                       Lars Hofhansl, lhofhansl@yahoo.com
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ *****************************************************************************
++ * $Author: ymnk@jcraft.com $
++ * $Date: 2001/08/15 17:13:50 $
++ * $Name: rel0-0-0 $
++ *****************************************************************************/
++package mindbright.ssh;
++
++import mindbright.ssh.*;
++import com.jcraft.jzlib.*;
++
++final class SSHCompression{
++   private ZStream deflate_stream=null;
++   private ZStream inflate_stream=null;
++
++   void init(int level){
++    deflate_stream=new ZStream();
++    inflate_stream=new ZStream();
++    deflate_stream.deflateInit(level);
++    inflate_stream.inflateInit();
++  }
++
++   void uninit(){
++    if(SSH.DEBUGMORE){
++    if(deflate_stream!=null)
++    System.out.println("compress outgoing: raw data "+deflate_stream.total_in+
++		       ", compressed "+deflate_stream.total_out+
++		       ", factor "+(deflate_stream.total_in == 0 ?
++				    0.0 :
++				    ((double)deflate_stream.total_out) /
++				    ((double)deflate_stream.total_in)));
++    if(inflate_stream!=null)
++    System.out.println("compress incoming: raw data "+inflate_stream.total_out+
++		       ", compressed "+inflate_stream.total_in+
++		       ", factor "+(inflate_stream.total_out == 0 ?
++				    0.0 :
++				    ((double)inflate_stream.total_in) /
++				    ((double)inflate_stream.total_out)));
++    }
++    if(deflate_stream!=null){
++      deflate_stream.deflateEnd();
++      deflate_stream.free();
++      deflate_stream=null;
++    }
++    if(inflate_stream!=null){
++      inflate_stream.inflateEnd();
++      inflate_stream.free();
++      inflate_stream=null;
++    }
++  }
++
++   private final int BUF_SIZE=4096;
++   private byte[] d_buf=new byte[BUF_SIZE];
++   private byte[] i_buf=new byte[BUF_SIZE];
++
++   int compress(byte[] buf, int len){
++
++    deflate_stream.next_in=buf;
++    deflate_stream.next_in_index=8;
++    deflate_stream.avail_in=len-8;
++
++    int status;
++    int outputlen=8;
++
++    do{
++      deflate_stream.next_out=d_buf;
++      deflate_stream.next_out_index=0;
++      deflate_stream.avail_out=BUF_SIZE;
++      status=deflate_stream.deflate(JZlib.Z_PARTIAL_FLUSH);
++      switch(status){
++      case JZlib.Z_OK:
++	System.arraycopy(d_buf, 0, 
++			 buf, outputlen,
++			 BUF_SIZE-deflate_stream.avail_out);
++	outputlen+=(BUF_SIZE-deflate_stream.avail_out);
++	break;
++      default:
++	System.err.println("SSHCompression.compress: deflate returnd "+status);
++      }
++    }
++    while(deflate_stream.avail_out==0);
++    return outputlen;
++  }
++
++   private byte[] out_buf = new byte[BUF_SIZE];
++   void uncompress(SSHPduInputStream input){
++    int pad=(8-(input.length%8));
++    int out_end=0;
++
++    inflate_stream.next_in=input.bytes;
++    inflate_stream.next_in_index=pad;
++    inflate_stream.avail_in=input.length - 4; // chop checksum field
++
++    while(true){
++      inflate_stream.next_out=i_buf;
++      inflate_stream.next_out_index=0;
++      inflate_stream.avail_out=BUF_SIZE;
++
++      int status=inflate_stream.inflate(JZlib.Z_PARTIAL_FLUSH);
++      switch(status){
++      case JZlib.Z_OK:
++        if(out_buf.length<out_end+BUF_SIZE-inflate_stream.avail_out){
++	  byte[] foo=new byte[out_end+BUF_SIZE-inflate_stream.avail_out];
++          System.arraycopy(out_buf, 0, foo, 0, out_end);
++          out_buf=foo;
++	}
++	System.arraycopy(i_buf, 0, 
++			 out_buf, out_end,
++			 BUF_SIZE-inflate_stream.avail_out);
++	out_end+=(BUF_SIZE-inflate_stream.avail_out);
++	break;
++      case JZlib.Z_BUF_ERROR:
++	if(out_end>input.bytes.length){
++	  byte[] foo=new byte[out_end];
++          System.arraycopy(out_buf, 0, foo, 0, out_end);
++          input.bytes=foo;
++	}
++	else{
++          System.arraycopy(out_buf, 0, input.bytes, 0, out_end);
++	}
++	input.length=out_end;
++	try{ input.reset(); }
++	catch(Exception e){}
++	return;
++      default:
++	System.err.println("SSHCompression.uncompress: inflate returnd "+status);
++	return; // humm..
++      }
++    }
++  }
++}
+diff -Naur mindbright/ssh/SSHConnectChannel.java mindbright-compression/ssh/SSHConnectChannel.java
+--- mindbright/ssh/SSHConnectChannel.java	Thu Mar  2 19:52:23 2000
++++ mindbright-compression/ssh/SSHConnectChannel.java	Wed Aug 15 17:13:02 2001
+@@ -139,7 +139,7 @@
+ 	controller.addTunnel(tunnel);
+ 	tunnel.setRemoteDesc(origin);
+ 
+-	respPdu = new SSHPduOutputStream(SSH.MSG_CHANNEL_OPEN_CONFIRMATION, controller.sndCipher);
++	respPdu = new SSHPduOutputStream(SSH.MSG_CHANNEL_OPEN_CONFIRMATION, controller.sndCipher, controller.compression);
+ 	respPdu.writeInt(remoteChannel);
+ 	respPdu.writeInt(newChan);
+ 
+@@ -155,7 +155,7 @@
+ 	tunnel.start();
+ 
+       } catch (IOException e) {
+- 	respPdu = new SSHPduOutputStream(SSH.MSG_CHANNEL_OPEN_FAILURE, controller.sndCipher);
++ 	respPdu = new SSHPduOutputStream(SSH.MSG_CHANNEL_OPEN_FAILURE, controller.sndCipher,controller.compression);
+  	respPdu.writeInt(remoteChannel);
+ 
+ 	controller.alert("Failed port open (" + origin + ") : " + host + ": " + port +
+diff -Naur mindbright/ssh/SSHInteractiveClient.java mindbright-compression/ssh/SSHInteractiveClient.java
+--- mindbright/ssh/SSHInteractiveClient.java	Wed Aug  2 19:08:43 2000
++++ mindbright-compression/ssh/SSHInteractiveClient.java	Wed Aug 15 17:13:02 2001
+@@ -69,7 +69,7 @@
+       try {
+ 	while(true) {
+ 	  line = console.promptLine("", "", false);
+-	  stdinPdu = new SSHPduOutputStream(SSH.CMSG_STDIN_DATA, console.sndCipher);
++	  stdinPdu = new SSHPduOutputStream(SSH.CMSG_STDIN_DATA, console.sndCipher, controller.compression);
+ 	  stdinPdu.writeString(line + "\n");
+ 	  controller.transmit(stdinPdu);
+ 	  Thread.sleep(400);
+diff -Naur mindbright/ssh/SSHListenChannel.java mindbright-compression/ssh/SSHListenChannel.java
+--- mindbright/ssh/SSHListenChannel.java	Tue Apr  4 09:34:12 2000
++++ mindbright-compression/ssh/SSHListenChannel.java	Wed Aug 15 17:13:02 2001
+@@ -99,7 +99,7 @@
+ 		continue;
+ 	    }
+ 
+-	    SSHPduOutputStream respPdu = new SSHPduOutputStream(SSH.MSG_PORT_OPEN, controller.sndCipher);
++	    SSHPduOutputStream respPdu = new SSHPduOutputStream(SSH.MSG_PORT_OPEN, controller.sndCipher, controller.compression);
+ 
+ 	    int newChan      = controller.newChannelId();
+ 	    SSHTunnel tunnel = newTunnel(fwdSocket,
+diff -Naur mindbright/ssh/SSHMenuHandlerFull.java mindbright-compression/ssh/SSHMenuHandlerFull.java
+--- mindbright/ssh/SSHMenuHandlerFull.java	Tue Aug  1 20:37:08 2000
++++ mindbright-compression/ssh/SSHMenuHandlerFull.java	Wed Aug 15 17:13:02 2001
+@@ -544,6 +544,7 @@
+ 
+   Dialog     settingsDialog = null;
+   Choice     choiceCipher, choiceAuthTyp;
++  Choice     choiceCompressionLevel;
+   Checkbox   cbX11, cbPrvPrt, cbRemFwd, cbIdHost, cbPortFtp, cbLocHst, cbMTU, cbAlive, cbForcPty;
+   TextField  textPort, textUser, textId, textDisp, textMtu, textAlive, textSrv,
+       textRealAddr, textAuthList, textLocHost;
+@@ -801,6 +802,17 @@
+       grid2.setConstraints(cbRemFwd, gridc2);
+       ap.add(cbRemFwd);
+ 
++      gridc2.gridy = 7;
++      lbl = new Label("CompressionLevel:");
++      grid2.setConstraints(lbl, gridc2);
++      ap.add(lbl);
++      choiceCompressionLevel = new Choice();
++	  choiceCompressionLevel.add("0");
++	  choiceCompressionLevel.add("6");
++	  choiceCompressionLevel.add("9");
++      grid2.setConstraints(choiceCompressionLevel, gridc2);
++      ap.add(choiceCompressionLevel);
++
+       gridc.gridy = 7;
+       gridc.insets = new Insets(0, 0, 0, 0);
+       gridc.anchor = GridBagConstraints.CENTER;
+@@ -844,6 +856,8 @@
+ 	    } else {
+ 	      client.propsHandler.setProperty("authtyp", authType);
+ 	    }
++	    String level = choiceCompressionLevel.getSelectedItem();
++	    client.propsHandler.setProperty("compression", level);
+ 	    client.propsHandler.setProperty("port", textPort.getText());
+ 	    client.propsHandler.setProperty("usrname", textUser.getText());
+ 	    client.propsHandler.setProperty("cipher", cipher[choiceCipher.getSelectedIndex()]);
+@@ -924,6 +938,9 @@
+       choiceAuthTyp.select("custom...");
+       textAuthList.setText(at);
+     }
++
++    at = client.propsHandler.getProperty("compression");
++    choiceCompressionLevel.select(at);
+ 
+     textId.setText(client.propsHandler.getProperty("idfile"));
+ 
+diff -Naur mindbright/ssh/SSHPduInputStream.java mindbright-compression/ssh/SSHPduInputStream.java
+--- mindbright/ssh/SSHPduInputStream.java	Mon Jul 19 17:13:50 1999
++++ mindbright-compression/ssh/SSHPduInputStream.java	Wed Aug 15 17:46:21 2001
+@@ -51,11 +51,13 @@
+ 
+   byte[] bytes;
+   Cipher cipher;
++  SSHCompression compression;
+ 
+-  SSHPduInputStream(int type, Cipher cipher) {
++  SSHPduInputStream(int type, Cipher cipher, SSHCompression compression) {
+     super(null);
+     this.type   = type; // This is the expected type (checked in readFrom())
+     this.cipher = cipher;
++    this.compression = compression;
+   }
+ 
+   boolean validChecksum() throws IOException {
+@@ -75,7 +77,7 @@
+   }
+ 
+   public SSHPdu createPdu() {
+-    return new SSHPduInputStream(this.type, this.cipher);
++    return new SSHPduInputStream(this.type, this.cipher, this.compression);
+   }
+ 
+   public void readFrom(InputStream in) throws IOException {
+@@ -102,6 +104,17 @@
+       throw new IOException("Invalid checksum in packet");
+ 
+     this.skip(8 - (len % 8));
++
++    if(compression != null){
++      //System.out.print("readFrom: length="+length);
++      byte[] foo=bytes;
++      compression.uncompress(this);
++      if(foo!=bytes){
++        this.in = new PduByteArrayInputStream(bytes);
++      }
++      //System.out.println(" -> length="+length);
++    }
++
+     type = (int)this.readByte();
+ 
+     if(type == SSH.MSG_DEBUG) {
+diff -Naur mindbright/ssh/SSHPduOutputStream.java mindbright-compression/ssh/SSHPduOutputStream.java
+--- mindbright/ssh/SSHPduOutputStream.java	Mon Jul 19 17:13:50 1999
++++ mindbright-compression/ssh/SSHPduOutputStream.java	Wed Aug 15 17:46:35 2001
+@@ -71,16 +71,18 @@
+ 
+   public int    type;
+   public Cipher cipher;
++  public SSHCompression compression;
+ 
+   SSHPduOutputStream(Cipher cipher) {
+     super(null);
+     this.cipher = cipher;
+   }
+ 
+-  SSHPduOutputStream(int type, Cipher cipher) throws IOException {
++  SSHPduOutputStream(int type, Cipher cipher, SSHCompression compression) throws IOException {
+     super(new PduByteArrayOutputStream(mtu));
+     this.type   = type;
+     this.cipher = cipher;
++    this.compression = compression;
+     if(cipher != null) {
+       PduByteArrayOutputStream bytes = (PduByteArrayOutputStream)out;
+       SecureRandom rand = SSH.secureRandom();
+@@ -95,7 +97,7 @@
+ 
+   public SSHPdu createPdu() throws IOException {
+     SSHPdu pdu;
+-    pdu = new SSHPduOutputStream(this.type, this.cipher);
++    pdu = new SSHPduOutputStream(this.type, this.cipher, this.compression);
+     return pdu;
+   }
+ 
+@@ -125,6 +127,13 @@
+     int                      crc32;
+     int                      padSz;
+     int                      off = 0;
++
++    if(compression != null){
++      //System.out.print("writeTo: size="+bytes.size());
++      int size=compression.compress(bytes.getBuf(), bytes.size());
++      bytes.setCount(size);
++      //System.out.println(" -> size="+bytes.size());
++    }
+ 
+     iSz   = bytes.size();
+     pad   = (iSz + 4) % 8;
+diff -Naur mindbright/ssh/SSHPropertyHandler.java mindbright-compression/ssh/SSHPropertyHandler.java
+--- mindbright/ssh/SSHPropertyHandler.java	Tue Aug  1 20:37:08 2000
++++ mindbright-compression/ssh/SSHPropertyHandler.java	Wed Aug 15 17:13:02 2001
+@@ -84,6 +84,7 @@
+ 	{ "secrand",  "0",           "level of security in random seed (for generating session key)",
+ 	  "(0-2, 0=low and 2=high)" },
+ 	{ "alive",    "0",           "Connection keep-alive interval in seconds (0 means none)", "(0-600)" },
++	{ "compression",    "0",     "Compression Level (0 means none, 1=fast, 9=slow,best )", "(0-9)" },
+ 	{ "x11fwd",   "false",       "indicates whether X11 display is forwarded or not", "(true/false)" },
+ 	{ "prvport",  "false",       "indicates whether to use a privileged port or not (locally)", "(true/false)" },
+ 	{ "forcpty",  "true",        "indicates whether to allocate a pty or not", "(true/false)" },
+@@ -295,7 +296,7 @@
+ 	    if(!(value.equals("true") || value.equals("false")))
+ 		throw new IllegalArgumentException("Value for " + key + " must be 'true' or 'false'");
+ 	    //
+-	} else if(key.equals("port") || key.equals("proxyport") || key.equals("mtu") ||
++	} else if(key.equals("port") || key.equals("proxyport") || key.equals("mtu") || key.equals("compression") ||
+ 		  key.equals("secrand") || key.equals("alive")) {
+ 	    try {
+ 		int val = Integer.valueOf(value).intValue();
+@@ -309,6 +310,9 @@
+ 		} else if(key.equals("secrand")) {
+ 		    if(val < 0 || val > 2)
+ 			throw new IllegalArgumentException("Secrand must be 0-2");
++		} else if(key.equals("compression")) {
++		    if(val < 0 || val > 9)
++			throw new IllegalArgumentException("Compression Level must be 0-9");
+ 		}
+ 	    } catch (NumberFormatException e) {
+ 		throw new IllegalArgumentException("Value for " + key + " must be an integer");
+@@ -1203,6 +1207,10 @@
+ 
+     public int getAliveInterval() {
+ 	return Integer.valueOf(getProperty("alive")).intValue();
++    }
++
++    public int getCompressionLevel() {
++	return Integer.valueOf(getProperty("compression")).intValue();
+     }
+ 
+     public boolean wantX11Forward() {
+diff -Naur mindbright/ssh/SSHTunnel.java mindbright-compression/ssh/SSHTunnel.java
+--- mindbright/ssh/SSHTunnel.java	Mon Sep  6 18:54:30 1999
++++ mindbright-compression/ssh/SSHTunnel.java	Wed Aug 15 17:13:02 2001
+@@ -64,7 +64,7 @@
+ 	throw new IOException("Could not create tunnel: " + e.toString());
+       }
+       txQueue = txChan.getQueue();
+-      rxChan.setSSHPduFactory(new SSHPduOutputStream(SSH.MSG_CHANNEL_DATA, controller.sndCipher));
++      rxChan.setSSHPduFactory(new SSHPduOutputStream(SSH.MSG_CHANNEL_DATA, controller.sndCipher, controller.compression));
+       txChan.setSSHChannelListener(this);
+       rxChan.setSSHChannelListener(this);
+     }
+@@ -157,7 +157,7 @@
+       return;
+     try {
+       SSHPduOutputStream pdu = new SSHPduOutputStream(SSH.MSG_CHANNEL_OUTPUT_CLOSED,
+-						      controller.sndCipher);
++						      controller.sndCipher, controller.compression);
+       pdu.writeInt(remoteChannelId);
+       controller.transmit(pdu);
+       sentOutputClosed = true;
+@@ -171,7 +171,7 @@
+       return;
+     try {
+       SSHPduOutputStream pdu = new SSHPduOutputStream(SSH.MSG_CHANNEL_INPUT_EOF,
+-						      controller.sndCipher);
++						      controller.sndCipher, controller.compression);
+       pdu.writeInt(remoteChannelId);
+       controller.transmit(pdu);
+       sentInputEOF = true;

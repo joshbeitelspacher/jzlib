@@ -181,28 +181,28 @@ final class Inflate{
         if(z.avail_in==0)return r;r=f;
 
         z.avail_in--; z.total_in++;
-        z.istate.need = (z.next_in[z.next_in_index++]&0xff) << 24;
+        z.istate.need=((z.next_in[z.next_in_index++]&0xff)<<24)&0xff000000L;
         z.istate.mode = DICT3;
       case DICT3:
 
         if(z.avail_in==0)return r;r=f;
 
         z.avail_in--; z.total_in++;
-        z.istate.need += (z.next_in[z.next_in_index++]&0xff)<<16;
+        z.istate.need += ((z.next_in[z.next_in_index++]&0xff)<<16)&0xff0000L;
         z.istate.mode = DICT2;
       case DICT2:
 
         if(z.avail_in==0)return r;r=f;
 
         z.avail_in--; z.total_in++;
-        z.istate.need += (z.next_in[z.next_in_index++]&0xff)<<8;
+        z.istate.need += ((z.next_in[z.next_in_index++]&0xff)<<8)&0xff00L;
         z.istate.mode = DICT1;
       case DICT1:
 
         if(z.avail_in==0)return r;r=f;
 
         z.avail_in--; z.total_in++;
-        z.istate.need += (z.next_in[z.next_in_index++]&0xff);
+        z.istate.need += (z.next_in[z.next_in_index++]&0xffL);
         z.adler = z.istate.need;
         z.istate.mode = DICT0;
         return Z_NEED_DICT;
