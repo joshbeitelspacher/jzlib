@@ -1,7 +1,7 @@
 /* -*-mode:java; c-basic-offset:2; -*- */
 /* JZlib -- zlib in pure Java
  *  
- * Copyright (C) 2000 ymnk, JCraft, Inc.
+ * Copyright (C) 2000-2002 ymnk, JCraft, Inc.
  *   
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public License
@@ -329,9 +329,9 @@ final class InfBlocks{
 	bb[0] = 7;
 	t = InfTree.inflate_trees_bits(blens, bb, tb, hufts, z);
 	if (t != Z_OK){
-	  blens=null;
 	  r = t;
 	  if (r == Z_DATA_ERROR){
+	    blens=null;
 	    mode = BAD;
 	  }
 
@@ -445,10 +445,11 @@ final class InfBlocks{
 	  t = table;
 	  t = InfTree.inflate_trees_dynamic(257 + (t & 0x1f), 1 + ((t >> 5) & 0x1f),
 					    blens, bl, bd, tl, td, hufts, z);
-	  blens=null;
 	  if (t != Z_OK){
-	    if (t == Z_DATA_ERROR)
+	    if (t == Z_DATA_ERROR){
+	      blens=null;
 	      mode = BAD;
+	    }
 	    r = t;
 
 	    bitb=b; bitk=k; 
@@ -459,8 +460,8 @@ final class InfBlocks{
 
 	  codes = new InfCodes(bl[0], bd[0], hufts, tl[0], hufts, td[0], z);
 	}
+        blens=null;
 	mode = CODES;
-
       case CODES:
 	bitb=b; bitk=k;
 	z.avail_in=n; z.total_in+=p-z.next_in_index;z.next_in_index=p;

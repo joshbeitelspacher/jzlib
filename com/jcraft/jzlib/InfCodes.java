@@ -290,7 +290,10 @@ final class InfCodes{
 
 	mode = COPY;
       case COPY:          // o: copying bytes in window, waiting for space
-	f = (q < dist) ? s.end - (dist - q) : q - dist;
+        f = q - dist;
+        while(f < 0){     // modulo window size-"while" instead
+          f += s.end;     // of "if" handles invalid distances
+	}
 	while (len!=0){
 
 	  if(m==0){
@@ -491,11 +494,13 @@ final class InfCodes{
 		}
 	      }
 	      else{                  // else offset after destination
-		e=d-q;               // bytes from offset to end
-		r=s.end-e;           // pointer to offset
+                r=q-d;
+                do{
+                  r+=s.end;          // force pointer in window
+                }while(r<0);         // covers invalid distances
+		e=s.end-r;
 		if(c>e){             // if source crosses,
-		  c-=e;              // copy to end of window
-
+		  c-=e;              // wrapped copy
 		  if(q-r>0 && e>(q-r)){           
 		    do{s.window[q++] = s.window[r++];}
 		    while(--e!=0);
@@ -506,7 +511,9 @@ final class InfCodes{
 		  }
 		  r = 0;                  // copy rest from start of window
 		}
+
 	      }
+
 	      // copy all or what's left
 	      if(q-r>0 && c>(q-r)){           
 		do{s.window[q++] = s.window[r++];}

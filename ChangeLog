@@ -1,7 +1,14 @@
 ChangeLog of JZlib
 ====================================================================
-Last modified: Tue Jan 29 15:26:37 UTC 2002
+Last modified: Mon Mar 18 15:04:57 UTC 2002
 
+Changes since version 0.0.6:
+- updated InfBlocks.java as zlib did to fix the vulnerability related to
+  the 'double free'. Of course, JZlib is free from such a vulnerability
+  like the 'double free', but JZlib had crashed with NullPointerException
+  by a specially-crafted block of invalid deflated data.	
+
+	
 Changes since version 0.0.5:
 - added 'flush()' method to com.jcraft.jzlib.ZOutputStream.
 - fixed to take care when occurring the buffer overflow in 
@@ -40,7 +47,7 @@ Changes since version 0.0.2:
 Changes since version 0.0.1:
 ............................
 - fixed the bad compression ratio problem, which is reported from
-  Martin Smith(martin@eigroup.com). The compression ratio was not so good
+  Martin Smith(martin@spamcop.net). The compression ratio was not so good
   compared with the compression ration of zlib. Now, this problem has been
   fixed	and, I hope, that deflated files by JZlib and zlib are completely
   same bit by bit.

@@ -346,7 +346,7 @@ final class InfTree{
 
 	  // allocate new table
           if (hn[0] + z > MANY)       // (note: doesn't matter for fixed)
-            return Z_MEM_ERROR;       // not enough memory
+            return Z_DATA_ERROR;       // overflow of MANY
           u[h] = q = /*hp+*/ hn[0];   // DEBUG
           hn[0] += z;
  
