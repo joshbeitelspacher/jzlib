@@ -1,7 +1,7 @@
 /* -*-mode:java; c-basic-offset:2; -*- */
 /* JZlib -- zlib in pure Java
  *
- * Copyright (C) 2001 Lapo Luchini.
+ * Copyright (C) 2001, 2002 Lapo Luchini, ymnk
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public License
@@ -63,7 +63,7 @@ public class ZOutputStream extends OutputStream {
     z.next_in=b;
     z.next_in_index=off;
     z.avail_in=len;
-    do {
+    do{
       z.next_out=buf;
       z.next_out_index=0;
       z.avail_out=bufsize;
@@ -72,9 +72,10 @@ public class ZOutputStream extends OutputStream {
       else
         err=z.inflate(flush);
       if(err!=JZlib.Z_OK)
-	throw new ZStreamException((compress ? "de" : "in")+"flating: "+z.msg);
+        throw new ZStreamException((compress?"de":"in")+"flating: "+z.msg);
       out.write(buf, 0, bufsize-z.avail_out);
-    } while(z.avail_in>0);
+    } 
+    while(z.avail_in>0 || z.avail_out==0);
   }
 
   public int getFlushMode() {
@@ -109,6 +110,10 @@ public class ZOutputStream extends OutputStream {
    */
   public long getTotalOut() {
     return z.total_out;
+  }
+
+  public void flush() throws IOException {
+    out.flush();
   }
 
 }

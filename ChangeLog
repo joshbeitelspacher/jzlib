@@ -1,7 +1,14 @@
 ChangeLog of JZlib
 ====================================================================
-Last modified: Tue May 29 22:22:33 UTC 2001
+Last modified: Tue Jan 29 15:26:37 UTC 2002
 
+Changes since version 0.0.5:
+- added 'flush()' method to com.jcraft.jzlib.ZOutputStream.
+- fixed to take care when occurring the buffer overflow in 
+  com.jcraft.jzlib.ZOutputStream.
+Many thanks to Tim Bendfelt at cs.wisc.edu , who pointed out above problems.
+
+	
 Changes since version 0.0.4:
 ............................
 - fixed a bug in Adler32 class.
