@@ -1028,7 +1028,9 @@ final class Deflate{
       // Find the longest match, discarding those <= prev_length.
       // At this point we have always match_length < MIN_MATCH
 
-      if(hash_head!=0L && strstart-hash_head<=w_size-MIN_LOOKAHEAD) {
+      if(hash_head!=0L && 
+	 ((strstart-hash_head)&0xffff) <= w_size-MIN_LOOKAHEAD
+	 ){
 	// To simplify the code, we prevent matches with the string
 	// of window index 0 (in particular we have to avoid a match
 	// of the string with itself at the start of the input file).
@@ -1135,7 +1137,8 @@ final class Deflate{
       match_length = MIN_MATCH-1;
 
       if (hash_head != 0 && prev_length < max_lazy_match &&
-	  strstart - hash_head <= w_size-MIN_LOOKAHEAD) {
+	  ((strstart-hash_head)&0xffff) <= w_size-MIN_LOOKAHEAD
+	  ){
 	// To simplify the code, we prevent matches with the string
 	// of window index 0 (in particular we have to avoid a match
 	// of the string with itself at the start of the input file).
@@ -1263,7 +1266,6 @@ final class Deflate{
 
       // Skip to next match if the match length cannot increase
       // or if the match length is less than 2:
-
       if (window[match+best_len]   != scan_end  ||
 	  window[match+best_len-1] != scan_end1 ||
 	  window[match]       != window[scan]     ||
@@ -1274,12 +1276,10 @@ final class Deflate{
       // It is not necessary to compare scan[2] and match[2] since they
       // are always equal when the other bytes match, given that
       // the hash keys are equal and that HASH_BITS >= 8.
-
       scan += 2; match++;
 
       // We check for insufficient lookahead only every 8th comparison;
       // the 256th check will be made at strstart+258.
-
       do {
       } while (window[++scan] == window[++match] &&
 	       window[++scan] == window[++match] &&
@@ -1301,6 +1301,7 @@ final class Deflate{
 	scan_end1  = window[scan+best_len-1];
 	scan_end   = window[scan+best_len];
       }
+
     } while ((cur_match = (prev[cur_match & wmask]&0xffff)) > limit
 	     && --chain_length != 0);
 

@@ -35,6 +35,8 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package com.jcraft.jzlib;
 
 final public class JZlib{
+  private static final String version="1.0.2";
+  public static String version(){return version;}
 
   // compression levels
   static final public int Z_NO_COMPRESSION=0;
