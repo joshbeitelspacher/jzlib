@@ -1299,9 +1299,12 @@ final class Deflate{
     return lookahead;
   }
     
-  int deflateInit(ZStream strm, int level){
-    return deflateInit2(strm, level, Z_DEFLATED, MAX_WBITS, DEF_MEM_LEVEL,
+  int deflateInit(ZStream strm, int level, int bits){
+    return deflateInit2(strm, level, Z_DEFLATED, bits, DEF_MEM_LEVEL,
 			Z_DEFAULT_STRATEGY);
+  }
+  int deflateInit(ZStream strm, int level){
+    return deflateInit(strm, level, MAX_WBITS);
   }
   int deflateInit2(ZStream strm, int level, int method,  int windowBits,
 		   int memLevel, int strategy){

@@ -88,8 +88,8 @@ Read the COPYING file for the complete license.
 
 Credits
 =======
-JZlib has been developed by ymnk@jcraft.com and lapo@lapo.it,
-but they have has just re-implemented zlib in pure Java.
+JZlib has been developed by ymnk@jcraft.com,
+but he has just re-implemented zlib in pure Java.
 So, all credit should go to authors 
  Jean-loup Gailly(jloup@gzip.org) and Mark Adler(madler@alumni.caltech.edu)
 and contributors of zlib.

@@ -95,7 +95,11 @@ final public class ZStream{
 
   public int deflateInit(int level){
     dstate=new Deflate();
-    return dstate.deflateInit(this, level);
+    return dstate.deflateInit(this, level, MAX_WBITS);
+  }
+  public int deflateInit(int level, int bits){
+    dstate=new Deflate();
+    return dstate.deflateInit(this, level, bits);
   }
   public int deflate(int flush){
     if(dstate==null){

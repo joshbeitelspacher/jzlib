@@ -26,7 +26,7 @@
 package com.jcraft.jzlib;
 import java.io.*;
 
-public class ZOutputStream extends FilterOutputStream {
+public class ZOutputStream extends OutputStream {
 
   protected ZStream z=new ZStream();
   protected int bufsize=512;
@@ -35,14 +35,18 @@ public class ZOutputStream extends FilterOutputStream {
                    buf1=new byte[1];
   protected boolean compress;
 
+  private OutputStream out;
+
   public ZOutputStream(OutputStream out) {
-    super(out);
+    super();
+    this.out=out;
     z.inflateInit();
     compress=false;
   }
 
   public ZOutputStream(OutputStream out, int level) {
-    super(out);
+    super();
+    this.out=out;
     z.deflateInit(level);
     compress=true;
   }
@@ -83,7 +87,7 @@ public class ZOutputStream extends FilterOutputStream {
 
   public void close() throws IOException {
     try {
-      flush();
+      out.flush();
     } catch (IOException ignored) {
     }
     z.deflateEnd();

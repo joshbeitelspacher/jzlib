@@ -1,7 +1,21 @@
 ChangeLog of JZlib
 ====================================================================
-Last modified: Fri May 18 15:25:32 UTC 2001
+Last modified: Tue May 29 22:22:33 UTC 2001
 
+Changes since version 0.0.4:
+............................
+- fixed a bug in Adler32 class.
+- fixed a bug in ZInputStream class
+- modified ZInputStream to be extended from InputStream
+  instead of FileInputStream.
+- modified ZOutputStream to be extended from OutputStream
+  instead of FileOutputStream.
+- modified ZStream to be changeable wbits. Give wbits value to
+  the method 'deflateInit' of ZStream.	 
+Many thanks to Bryan Keller<keller@neomar.com>, who reported bugs
+and made suggestions.
+
+	
 Changes since version 0.0.3:
 ............................
 - fixed a bug in the compression level 0.

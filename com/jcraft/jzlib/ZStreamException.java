@@ -1,7 +1,7 @@
 /* -*-mode:java; c-basic-offset:2; -*- */
 /* JZlib -- zlib in pure Java
  *
- * Copyright (C) 2001 Lapo Luchini.
+ * Copyright (C) 2001 Lapo Luchinir.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public License

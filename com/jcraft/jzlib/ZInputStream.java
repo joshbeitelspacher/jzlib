@@ -26,7 +26,7 @@
 package com.jcraft.jzlib;
 import java.io.*;
 
-public class ZInputStream extends FilterInputStream {
+public class ZInputStream extends InputStream {
 
   protected ZStream z=new ZStream();
   protected int bufsize=512;
@@ -35,8 +35,11 @@ public class ZInputStream extends FilterInputStream {
                    buf1=new byte[1];
   protected boolean compress;
 
+  private InputStream in=null;
+
   public ZInputStream(InputStream in) {
-    super(in);
+    super();
+    this.in=in;
     z.inflateInit();
     compress=false;
     z.next_in=buf;
@@ -45,7 +48,8 @@ public class ZInputStream extends FilterInputStream {
   }
 
   public ZInputStream(InputStream in, int level) {
-    super(in);
+    super();
+    this.in=in;
     z.deflateInit(level);
     compress=true;
     z.next_in=buf;
@@ -87,7 +91,7 @@ public class ZInputStream extends FilterInputStream {
 	err=z.inflate(flush);
       if(nomoreinput&&(err==JZlib.Z_BUF_ERROR))
         return(-1);
-      if(err!=JZlib.Z_OK)
+      if(err!=JZlib.Z_OK && err!=JZlib.Z_STREAM_END)
 	throw new ZStreamException((compress ? "de" : "in")+"flating: "+z.msg);
       if(nomoreinput&&(z.avail_out==len))
 	return(-1);
@@ -126,4 +130,7 @@ public class ZInputStream extends FilterInputStream {
     return z.total_out;
   }
 
+  public void close() throws IOException{
+    in.close();
+  }
 }

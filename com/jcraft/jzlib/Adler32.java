@@ -72,7 +72,7 @@ final class Adler32{
       }
       if(k!=0){
         do{
-          s1+=buf[index++]; s2+=s1;
+          s1+=buf[index++]&0xff; s2+=s1;
         }
         while(--k!=0);
       }
