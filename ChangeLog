@@ -1,12 +1,17 @@
 ChangeLog of JZlib
 ====================================================================
-Last modified: Thu Mar  8 15:25:48 UTC 2001
+Last modified: Fri Apr  6 15:30:54 UTC 2001
 
+Changes since version 0.0.2:
+............................
+- fixed a critical bug, which had arisen in the deflating operation with
+  NO_FLUSH and DEFAULT_COMPRESSION mode.
+  Many thanks to Bryan Keller(keller@neomar.com), who reported this glitch.
 
 Changes since version 0.0.1:
 ............................
-- fixed the bad compression ratio problem, which was reported from
-  Martin Smith(martin@spamcop.net). The compression ratio was not so good
-  compared with the compression ration by zlib. Now, this problem has been
-  fixed	and, I hope, deflated files by JZlib and zlib are completely
-  same bit by bit. I thank him for his valuable feedback.
+- fixed the bad compression ratio problem, which is reported from
+  Martin Smith(martin@eigroup.com). The compression ratio was not so good
+  compared with the compression ration of zlib. Now, this problem has been
+  fixed	and, I hope, that deflated files by JZlib and zlib are completely
+  same bit by bit.

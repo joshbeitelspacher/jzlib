@@ -545,6 +545,7 @@ final class Deflate{
     System.arraycopy(p, start, pending_buf, pending, len);
     pending+=len;
   }
+
   final void put_byte(byte c){
     pending_buf[pending++]=c;
   }
@@ -558,19 +559,21 @@ final class Deflate{
   }   
 
   final void send_code(int c, short[] tree){
-    send_bits(tree[c*2], tree[c*2+1]);
+    send_bits((tree[c*2]&0xffff), (tree[c*2+1]&0xffff));
   }
 
   void send_bits(int value, int length){
     int len = length;
     if (bi_valid > (int)Buf_size - len) {
       int val = value;
-      bi_buf |= (val << bi_valid);
+//      bi_buf |= (val << bi_valid);
+      bi_buf |= ((val << bi_valid)&0xffff);
       put_short(bi_buf);
       bi_buf = (short)(val >>> (Buf_size - bi_valid));
       bi_valid += len - Buf_size;
     } else {
-      bi_buf |= (value) << bi_valid;
+//      bi_buf |= (value) << bi_valid;
+      bi_buf |= (((value) << bi_valid)&0xffff);
       bi_valid += len;
     }
   }
@@ -613,6 +616,7 @@ final class Deflate{
     pending_buf[d_buf+last_lit*2+1] = (byte)dist;
 
     pending_buf[l_buf+last_lit] = (byte)lc; last_lit++;
+
     if (dist == 0) {
       // lc is the unmatched char
       dyn_ltree[lc*2]++;
@@ -664,6 +668,7 @@ final class Deflate{
 	else{
 	  // Here, lc is the match length - MIN_MATCH
 	  code = Tree._length_code[lc];
+
 	  send_code(code+LITERALS+1, ltree); // send the length code
 	  extra = Tree.extra_lbits[code];
 	  if(extra != 0){
@@ -1182,9 +1187,9 @@ final class Deflate{
 	// is longer, truncate the previous match to a single literal.
 
 	bflush=_tr_tally(0, window[strstart-1]&0xff);
+
 	if (bflush) {
 	  flush_block_only(false);
-	  if(strm.avail_out==0) return NeedMore;
 	}
 	strstart++;
 	lookahead--;
