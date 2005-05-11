@@ -1,6 +1,17 @@
 ChangeLog of JZlib
 ====================================================================
-Last modified: Mon May 17 15:43:25 UTC 2004
+Last modified: Wed May 11 14:40:59 UTC 2005
+
+	
+Changes since version 1.0.5:
+- ZInputStream.read(byte[], int, int) method return sometimes zero 
+  instead of -1 at the end of stream.
+- ZOutputStream.end() method should not declare IOException.
+- It should be possible to call ZOutputStream.end() method more times 
+  (because you can call	close() method and after it end() method in 
+   finally block).
+- ZOutputStream.finish() method should not ignore IOException from flush().
+Many thanks to Matej Kraus at seznam.cz , who pointed out above problems.
 
 	
 Changes since version 1.0.4:

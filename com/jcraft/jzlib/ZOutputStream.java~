@@ -110,11 +110,11 @@ public class ZOutputStream extends OutputStream {
       }
     }
     while(z.avail_in>0 || z.avail_out==0);
-    flush();
+    try { flush(); } 
+    catch (IOException ignored) {
+    }
   }
-  public void end() {
-    if(z==null)
-      return;
+  public void end() throws IOException {
     if(compress){ z.deflateEnd(); }
     else{ z.inflateEnd(); }
     z.free();
