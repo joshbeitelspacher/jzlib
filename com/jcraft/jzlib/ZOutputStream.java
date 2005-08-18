@@ -1,4 +1,4 @@
-/* -*-mode:java; c-basic-offset:2; -*- */
+/* -*-mode:java; c-basic-offset:2; indent-tabs-mode:nil -*- */
 /*
 Copyright (c) 2001 Lapo Luchini.
 
@@ -44,7 +44,7 @@ public class ZOutputStream extends OutputStream {
                    buf1=new byte[1];
   protected boolean compress;
 
-  private OutputStream out;
+  protected OutputStream out;
 
   public ZOutputStream(OutputStream out) {
     super();
@@ -54,9 +54,12 @@ public class ZOutputStream extends OutputStream {
   }
 
   public ZOutputStream(OutputStream out, int level) {
+    this(out, level, false);
+  }
+  public ZOutputStream(OutputStream out, int level, boolean nowrap) {
     super();
     this.out=out;
-    z.deflateInit(level);
+    z.deflateInit(level, nowrap);
     compress=true;
   }
 

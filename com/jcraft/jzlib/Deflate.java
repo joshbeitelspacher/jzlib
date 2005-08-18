@@ -403,8 +403,10 @@ final class Deflate{
   }
 
   static boolean smaller(short[] tree, int n, int m, byte[] depth){
-    return (tree[n*2] < tree[m*2] ||
-	    (tree[n*2] == tree[m*2] && depth[n] <= depth[m]));
+    short tn2=tree[n*2];
+    short tm2=tree[m*2];
+    return (tn2<tm2 ||
+	    (tn2==tm2 && depth[n] <= depth[m]));
   }
 
   // Scan a literal or distance tree to determine the frequencies of the codes
@@ -568,7 +570,8 @@ final class Deflate{
   }   
 
   final void send_code(int c, short[] tree){
-    send_bits((tree[c*2]&0xffff), (tree[c*2+1]&0xffff));
+    int c2=c*2;
+    send_bits((tree[c2]&0xffff), (tree[c2+1]&0xffff));
   }
 
   void send_bits(int value, int length){

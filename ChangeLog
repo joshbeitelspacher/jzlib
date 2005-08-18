@@ -1,6 +1,13 @@
 ChangeLog of JZlib
 ====================================================================
-Last modified: Wed May 11 14:40:59 UTC 2005
+Last modified: Thu Aug 18 16:16:06 UTC 2005
+
+	
+Changes since version 1.0.6:	
+- change: memory and performance optimizations in the inflate operation.
+  Many thanks to Paul Wakefield at platx.org(http://www.platx.org), who 
+  suggested above improvements.
+- change: added the nowrap argument to Z{Input,Output}?Stream.
 
 	
 Changes since version 1.0.5:

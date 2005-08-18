@@ -81,7 +81,7 @@ final class InfBlocks{
   int[] bb=new int[1]; // bit length tree depth 
   int[] tb=new int[1]; // bit length decoding tree 
 
-  InfCodes codes;      // if CODES, current state 
+  InfCodes codes=new InfCodes();      // if CODES, current state 
 
   int last;            // true if this block is the last block 
 
@@ -96,6 +96,8 @@ final class InfBlocks{
   Object checkfn;      // check function 
   long check;          // check on output 
 
+  InfTree inftree=new InfTree();
+
   InfBlocks(ZStream z, Object checkfn, int w){
     hufts=new int[MANY*3];
     window=new byte[w];
@@ -108,7 +110,6 @@ final class InfBlocks{
   void reset(ZStream z, long[] c){
     if(c!=null) c[0]=check;
     if(mode==BTREE || mode==DTREE){
-      blens=null;
     }
     if(mode==CODES){
       codes.free(z);
@@ -173,8 +174,8 @@ final class InfBlocks{
             int[][] tl=new int[1][];
 	    int[][] td=new int[1][];
 
-            InfTree.inflate_trees_fixed(bl, bd, tl, td, z);
-            codes = new InfCodes(bl[0], bd[0], tl[0], td[0], z);
+	    InfTree.inflate_trees_fixed(bl, bd, tl, td, z);
+            codes.init(bl[0], bd[0], tl[0], 0, td[0], 0, z);
           }
 
           {b>>>=(3);k-=(3);}
@@ -302,7 +303,12 @@ final class InfBlocks{
 	    return inflate_flush(z,r);
 	  }
 	t = 258 + (t & 0x1f) + ((t >> 5) & 0x1f);
-	blens=new int[t];
+	if(blens==null || blens.length<t){
+	  blens=new int[t];
+	}
+	else{
+	  for(int i=0; i<t; i++){blens[i]=0;}
+	}
 
 	{b>>>=(14);k-=(14);}
 
@@ -336,7 +342,7 @@ final class InfBlocks{
 	}
 
 	bb[0] = 7;
-	t = InfTree.inflate_trees_bits(blens, bb, tb, hufts, z);
+	t = inftree.inflate_trees_bits(blens, bb, tb, hufts, z);
 	if (t != Z_OK){
 	  r = t;
 	  if (r == Z_DATA_ERROR){
@@ -447,13 +453,14 @@ final class InfBlocks{
 	  int[] bd=new int[1];
 	  int[] tl=new int[1];
 	  int[] td=new int[1];
-	  InfCodes c;
-
 	  bl[0] = 9;         // must be <= 9 for lookahead assumptions
 	  bd[0] = 6;         // must be <= 9 for lookahead assumptions
+
 	  t = table;
-	  t = InfTree.inflate_trees_dynamic(257 + (t & 0x1f), 1 + ((t >> 5) & 0x1f),
+	  t = inftree.inflate_trees_dynamic(257 + (t & 0x1f), 
+					    1 + ((t >> 5) & 0x1f),
 					    blens, bl, bd, tl, td, hufts, z);
+
 	  if (t != Z_OK){
 	    if (t == Z_DATA_ERROR){
 	      blens=null;
@@ -466,10 +473,8 @@ final class InfBlocks{
 	    write=q;
 	    return inflate_flush(z,r);
 	  }
-
-	  codes = new InfCodes(bl[0], bd[0], hufts, tl[0], hufts, td[0], z);
+	  codes.init(bl[0], bd[0], hufts, tl[0], hufts, td[0], z);
 	}
-        blens=null;
 	mode = CODES;
       case CODES:
 	bitb=b; bitk=k;

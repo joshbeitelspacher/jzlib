@@ -1,4 +1,4 @@
-/* -*-mode:java; c-basic-offset:2; -*- */
+/* -*-mode:java; c-basic-offset:2; indent-tabs-mode:nil -*- */
 /*
 Copyright (c) 2000,2001,2002,2003 ymnk, JCraft,Inc. All rights reserved.
 
@@ -80,9 +80,16 @@ final public class ZStream{
   public int inflateInit(){
     return inflateInit(DEF_WBITS);
   }
+  public int inflateInit(boolean nowrap){
+    return inflateInit(DEF_WBITS, nowrap);
+  }
   public int inflateInit(int w){
+    return inflateInit(w, false);
+  }
+
+  public int inflateInit(int w, boolean nowrap){
     istate=new Inflate();
-    return istate.inflateInit(this, w);
+    return istate.inflateInit(this, nowrap?-w:w);
   }
 
   public int inflate(int f){
@@ -109,9 +116,15 @@ final public class ZStream{
   public int deflateInit(int level){
     return deflateInit(level, MAX_WBITS);
   }
+  public int deflateInit(int level, boolean nowrap){
+    return deflateInit(level, MAX_WBITS, nowrap);
+  }
   public int deflateInit(int level, int bits){
+    return deflateInit(level, bits, false);
+  }
+  public int deflateInit(int level, int bits, boolean nowrap){
     dstate=new Deflate();
-    return dstate.deflateInit(this, level, bits);
+    return dstate.deflateInit(this, level, nowrap?-bits:bits);
   }
   public int deflate(int flush){
     if(dstate==null){

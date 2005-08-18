@@ -1,4 +1,4 @@
-/* -*-mode:java; c-basic-offset:2; -*- */
+/* -*-mode:java; c-basic-offset:2; indent-tabs-mode:nil -*- */
 /*
 Copyright (c) 2000,2001,2002,2003 ymnk, JCraft,Inc. All rights reserved.
 
@@ -219,18 +219,25 @@ final class InfTree{
   // If BMAX needs to be larger than 16, then h and x[] should be uLong.
   static final int BMAX=15;         // maximum bit length of any code
 
-  static int huft_build(int[] b, // code lengths in bits (all assumed <= BMAX)
-                        int bindex, 
-			int n,   // number of codes (assumed <= 288)
-			int s,   // number of simple-valued codes (0..s-1)
-                        int[] d, // list of base values for non-simple codes
-                        int[] e, // list of extra bits for non-simple codes
-                        int[] t, // result: starting table
-                        int[] m, // maximum lookup bits, returns actual
-                        int[] hp,// space for trees
-                        int[] hn,// hufts used in space
-                        int[] v  // working area: values in order of bit length
-			){
+  int[] hn = null;  // hufts used in space
+  int[] v = null;   // work area for huft_build 
+  int[] c = null;   // bit length count table
+  int[] r = null;   // table entry for structure assignment
+  int[] u = null;   // table stack
+  int[] x = null;   // bit offsets, then code stack
+
+  private int huft_build(int[] b, // code lengths in bits (all assumed <= BMAX)
+                         int bindex, 
+                         int n,   // number of codes (assumed <= 288)
+                         int s,   // number of simple-valued codes (0..s-1)
+                         int[] d, // list of base values for non-simple codes
+                         int[] e, // list of extra bits for non-simple codes
+                         int[] t, // result: starting table
+                         int[] m, // maximum lookup bits, returns actual
+                         int[] hp,// space for trees
+                         int[] hn,// hufts used in space
+                         int[] v  // working area: values in order of bit length
+                         ){
     // Given a list of code lengths and a maximum table size, make a set of
     // tables to decode that set of codes.  Return Z_OK on success, Z_BUF_ERROR
     // if the given code set is incomplete (the tables are still built in this
@@ -238,7 +245,6 @@ final class InfTree{
     // lengths), or Z_MEM_ERROR if not enough memory.
 
     int a;                       // counter for codes of length k
-    int[] c=new int[BMAX+1];     // bit length count table
     int f;                       // i repeats in table every f entries
     int g;                       // maximum code length
     int h;                       // table level
@@ -249,10 +255,7 @@ final class InfTree{
     int mask;                    // (1 << w) - 1, to avoid cc -O bug on HP
     int p;                       // pointer into c[], b[], or v[]
     int q;                       // points to current table
-    int[] r=new int[3];          // table entry for structure assignment
-    int[] u=new int[BMAX];       // table stack
     int w;                       // bits before this table == (l * h)
-    int[] x=new int[BMAX+1];     // bit offsets, then code stack
     int xp;                      // pointer into x
     int y;                       // number of dummy codes added
     int z;                       // number of entries in current table
@@ -354,8 +357,9 @@ final class InfTree{
           z = 1 << j;                 // table entries for j-bit table
 
 	  // allocate new table
-          if (hn[0] + z > MANY)       // (note: doesn't matter for fixed)
+          if (hn[0] + z > MANY){       // (note: doesn't matter for fixed)
             return Z_DATA_ERROR;       // overflow of MANY
+          }
           u[h] = q = /*hp+*/ hn[0];   // DEBUG
           hn[0] += z;
  
@@ -412,71 +416,71 @@ final class InfTree{
     return y != 0 && g != 1 ? Z_BUF_ERROR : Z_OK;
   }
 
-  static int inflate_trees_bits(int[] c,  // 19 code lengths
-				int[] bb, // bits tree desired/actual depth
-				int[] tb, // bits tree result
-				int[] hp, // space for trees
-				ZStream z // for messages
-				){
-    int r;
-    int[] hn = new int[1];          // hufts used in space
-    int[] v=new int[19];            // work area for huft_build 
+  int inflate_trees_bits(int[] c,  // 19 code lengths
+                         int[] bb, // bits tree desired/actual depth
+                         int[] tb, // bits tree result
+                         int[] hp, // space for trees
+                         ZStream z // for messages
+                         ){
+    int result;
+    initWorkArea(19);
+    hn[0]=0;
+    result = huft_build(c, 0, 19, 19, null, null, tb, bb, hp, hn, v);
 
-    r = huft_build(c, 0, 19, 19, null, null, tb, bb, hp, hn, v);
-
-    if (r == Z_DATA_ERROR){
+    if(result == Z_DATA_ERROR){
       z.msg = "oversubscribed dynamic bit lengths tree";
     }
-    else if (r == Z_BUF_ERROR || bb[0] == 0){
+    else if(result == Z_BUF_ERROR || bb[0] == 0){
       z.msg = "incomplete dynamic bit lengths tree";
-      r = Z_DATA_ERROR;
+      result = Z_DATA_ERROR;
     }
-    return r;
+    return result;
   }
 
-  static int inflate_trees_dynamic(int nl,   // number of literal/length codes
+  int inflate_trees_dynamic(int nl,   // number of literal/length codes
                             int nd,   // number of distance codes
                             int[] c,  // that many (total) code lengths
-			    int[] bl, // literal desired/actual bit depth
-			    int[] bd, // distance desired/actual bit depth 
-			    int[] tl, // literal/length tree result
-			    int[] td, // distance tree result
-			    int[] hp, // space for trees
-			    ZStream z // for messages
-			    ){
-    int r;
-    int[] hn = new int[1];           // hufts used in space
-    int[] v=new int[288];            // work area for huft_build
+                            int[] bl, // literal desired/actual bit depth
+                            int[] bd, // distance desired/actual bit depth 
+                            int[] tl, // literal/length tree result
+                            int[] td, // distance tree result
+                            int[] hp, // space for trees
+                            ZStream z // for messages
+                            ){
+    int result;
 
     // build literal/length tree
-    r = huft_build(c, 0, nl, 257, cplens, cplext, tl, bl, hp, hn, v);
-    if (r != Z_OK || bl[0] == 0){
-      if(r == Z_DATA_ERROR){
+    initWorkArea(288);
+    hn[0]=0;
+    result = huft_build(c, 0, nl, 257, cplens, cplext, tl, bl, hp, hn, v);
+    if (result != Z_OK || bl[0] == 0){
+      if(result == Z_DATA_ERROR){
         z.msg = "oversubscribed literal/length tree";
       }
-      else if (r != Z_MEM_ERROR){
+      else if (result != Z_MEM_ERROR){
         z.msg = "incomplete literal/length tree";
-        r = Z_DATA_ERROR;
+        result = Z_DATA_ERROR;
       }
-      return r;
+      return result;
     }
 
     // build distance tree
-    r = huft_build(c, nl, nd, 0, cpdist, cpdext, td, bd, hp, hn, v);
+    initWorkArea(288);
+    result = huft_build(c, nl, nd, 0, cpdist, cpdext, td, bd, hp, hn, v);
 
-    if (r != Z_OK || (bd[0] == 0 && nl > 257)){
-      if (r == Z_DATA_ERROR){
+    if (result != Z_OK || (bd[0] == 0 && nl > 257)){
+      if (result == Z_DATA_ERROR){
         z.msg = "oversubscribed distance tree";
       }
-      else if (r == Z_BUF_ERROR) {
+      else if (result == Z_BUF_ERROR) {
         z.msg = "incomplete distance tree";
-        r = Z_DATA_ERROR;
+        result = Z_DATA_ERROR;
       }
-      else if (r != Z_MEM_ERROR){
+      else if (result != Z_MEM_ERROR){
         z.msg = "empty distance tree with lengths";
-        r = Z_DATA_ERROR;
+        result = Z_DATA_ERROR;
       }
-      return r;
+      return result;
     }
 
     return Z_OK;
@@ -488,10 +492,29 @@ final class InfTree{
                                  int[][] td,//distance tree result 
                                  ZStream z  //for memory allocation
 				 ){
-    bl[0] = fixed_bl;
-    bd[0] = fixed_bd;
-    tl[0] = fixed_tl;
-    td[0] = fixed_td;
+    bl[0]=fixed_bl;
+    bd[0]=fixed_bd;
+    tl[0]=fixed_tl;
+    td[0]=fixed_td;
     return Z_OK;
+  }
+
+  private void initWorkArea(int vsize){
+    if(hn==null){
+      hn=new int[1];
+      v=new int[vsize];
+      c=new int[BMAX+1];
+      r=new int[3];
+      u=new int[BMAX];
+      x=new int[BMAX+1];
+    }
+    if(v.length<vsize){ v=new int[vsize]; }
+    for(int i=0; i<vsize; i++){v[i]=0;}
+    for(int i=0; i<BMAX+1; i++){c[i]=0;}
+    for(int i=0; i<3; i++){r[i]=0;}
+//  for(int i=0; i<BMAX; i++){u[i]=0;}
+    System.arraycopy(c, 0, u, 0, BMAX);
+//  for(int i=0; i<BMAX+1; i++){x[i]=0;}
+    System.arraycopy(c, 0, x, 0, BMAX+1);
   }
 }

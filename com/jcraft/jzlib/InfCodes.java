@@ -89,26 +89,19 @@ final class InfCodes{
   int[] dtree;          // distance tree
   int dtree_index;      // distance tree
 
-  InfCodes(int bl, int bd,
+  InfCodes(){
+  }
+  void init(int bl, int bd,
 	   int[] tl, int tl_index,
 	   int[] td, int td_index, ZStream z){
-    mode = START;
-    lbits = (byte)bl;
-    dbits = (byte)bd;
-    ltree = tl;
+    mode=START;
+    lbits=(byte)bl;
+    dbits=(byte)bd;
+    ltree=tl;
     ltree_index=tl_index;
     dtree = td;
     dtree_index=td_index;
-  }
-
-  InfCodes(int bl, int bd, int[] tl, int[] td, ZStream z){
-    mode = START;
-    lbits = (byte)bl;
-    dbits = (byte)bd;
-    ltree = tl;
-    ltree_index=0;
-    dtree = td;
-    dtree_index=0;
+    tree=null;
   }
 
   int proc(InfBlocks s, ZStream z, int r){ 
@@ -425,6 +418,8 @@ final class InfCodes{
     int d;                // distance back to copy from
     int r;                // copy source pointer
 
+    int tp_index_t_3;     // (tp_index+t)*3
+
     // load input, output, bit values
     p=z.next_in_index;n=z.avail_in;b=s.bitb;k=s.bitk;
     q=s.write;m=q<s.read?s.read-q-1:s.end-q;
@@ -444,20 +439,21 @@ final class InfCodes{
       t= b&ml;
       tp=tl; 
       tp_index=tl_index;
-      if ((e = tp[(tp_index+t)*3]) == 0){
-	b>>=(tp[(tp_index+t)*3+1]); k-=(tp[(tp_index+t)*3+1]);
+      tp_index_t_3=(tp_index+t)*3;
+      if ((e = tp[tp_index_t_3]) == 0){
+	b>>=(tp[tp_index_t_3+1]); k-=(tp[tp_index_t_3+1]);
 
-	s.window[q++] = (byte)tp[(tp_index+t)*3+2];
+	s.window[q++] = (byte)tp[tp_index_t_3+2];
 	m--;
 	continue;
       }
       do {
 
-	b>>=(tp[(tp_index+t)*3+1]); k-=(tp[(tp_index+t)*3+1]);
+	b>>=(tp[tp_index_t_3+1]); k-=(tp[tp_index_t_3+1]);
 
 	if((e&16)!=0){
 	  e &= 15;
-	  c = tp[(tp_index+t)*3+2] + ((int)b & inflate_mask[e]);
+	  c = tp[tp_index_t_3+2] + ((int)b & inflate_mask[e]);
 
 	  b>>=e; k-=e;
 
@@ -470,11 +466,12 @@ final class InfCodes{
 	  t= b&md;
 	  tp=td;
 	  tp_index=td_index;
-	  e = tp[(tp_index+t)*3];
+          tp_index_t_3=(tp_index+t)*3;
+	  e = tp[tp_index_t_3];
 
 	  do {
 
-	    b>>=(tp[(tp_index+t)*3+1]); k-=(tp[(tp_index+t)*3+1]);
+	    b>>=(tp[tp_index_t_3+1]); k-=(tp[tp_index_t_3+1]);
 
 	    if((e&16)!=0){
 	      // get extra bits to add to distance base
@@ -484,7 +481,7 @@ final class InfCodes{
 		b|=(z.next_in[p++]&0xff)<<k;k+=8;
 	      }
 
-	      d = tp[(tp_index+t)*3+2] + (b&inflate_mask[e]);
+	      d = tp[tp_index_t_3+2] + (b&inflate_mask[e]);
 
 	      b>>=(e); k-=(e);
 
@@ -494,8 +491,9 @@ final class InfCodes{
 		//  just copy
 		r=q-d;
 		if(q-r>0 && 2>(q-r)){           
-		  s.window[q++]=s.window[r++]; c--; // minimum count is three,
-		  s.window[q++]=s.window[r++]; c--; // so unroll loop a little
+		  s.window[q++]=s.window[r++]; // minimum count is three,
+		  s.window[q++]=s.window[r++]; // so unroll loop a little
+		  c-=2;
 		}
 		else{
 		  System.arraycopy(s.window, r, s.window, q, 2);
@@ -535,9 +533,10 @@ final class InfCodes{
 	      break;
 	    }
 	    else if((e&64)==0){
-	      t+=tp[(tp_index+t)*3+2];
+	      t+=tp[tp_index_t_3+2];
 	      t+=(b&inflate_mask[e]);
-	      e=tp[(tp_index+t)*3];
+	      tp_index_t_3=(tp_index+t)*3;
+	      e=tp[tp_index_t_3];
 	    }
 	    else{
 	      z.msg = "invalid distance code";
@@ -556,13 +555,14 @@ final class InfCodes{
 	}
 
 	if((e&64)==0){
-	  t+=tp[(tp_index+t)*3+2];
+	  t+=tp[tp_index_t_3+2];
 	  t+=(b&inflate_mask[e]);
-	  if((e=tp[(tp_index+t)*3])==0){
+	  tp_index_t_3=(tp_index+t)*3;
+	  if((e=tp[tp_index_t_3])==0){
 
-	    b>>=(tp[(tp_index+t)*3+1]); k-=(tp[(tp_index+t)*3+1]);
+	    b>>=(tp[tp_index_t_3+1]); k-=(tp[tp_index_t_3+1]);
 
-	    s.window[q++]=(byte)tp[(tp_index+t)*3+2];
+	    s.window[q++]=(byte)tp[tp_index_t_3+2];
 	    m--;
 	    break;
 	  }

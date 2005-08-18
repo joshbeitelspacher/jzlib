@@ -1,4 +1,4 @@
-/* -*-mode:java; c-basic-offset:2; -*- */
+/* -*-mode:java; c-basic-offset:2; indent-tabs-mode:nil -*- */
 /*
 Copyright (c) 2001 Lapo Luchini.
 
@@ -44,12 +44,15 @@ public class ZInputStream extends FilterInputStream {
                    buf1=new byte[1];
   protected boolean compress;
 
-  private InputStream in=null;
+  protected InputStream in=null;
 
   public ZInputStream(InputStream in) {
+    this(in, false);
+  }
+  public ZInputStream(InputStream in, boolean nowrap) {
     super(in);
     this.in=in;
-    z.inflateInit();
+    z.inflateInit(nowrap);
     compress=false;
     z.next_in=buf;
     z.next_in_index=0;
